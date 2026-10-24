@@ -3,6 +3,7 @@
 import { CARDS } from './content/cards';
 import { airlockName } from './director';
 import { MODULES } from './content/modules';
+import { INVADERS } from './content/units';
 import type { GameEvent, GameState } from './types';
 
 export interface LogLine {
@@ -92,7 +93,7 @@ export function describeEvent(e: GameEvent, s: GameState): LogLine | null {
     case 'huskDropped':
       return { text: 'A husk was dropped.', tone: 'warn' };
     case 'huskDelivered':
-      return { text: `Husk delivered to the fabricator. Analysing ${e.from} tech…`, tone: 'good' };
+      return { text: `Husk delivered to the fabricator. Analysing ${INVADERS[e.from].name} tech…`, tone: 'good' };
     case 'moduleChosen':
       return { text: `${MODULES[e.moduleId]?.name ?? e.moduleId} blueprint added to your hand.`, tone: 'good' };
     case 'drilled':

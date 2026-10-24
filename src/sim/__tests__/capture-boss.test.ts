@@ -31,14 +31,19 @@ describe('Disable', () => {
     expect(d.disableNext).toBe(false);
   });
 
-  it('a non-lethal shot still uses up Disable', () => {
+  it('a non-lethal shot keeps Disable for the next lethal one', () => {
     const s = testState(['.........']);
     const d = addDrone(s, 'sentry', 0, 0);
     const inv = addInvader(s, 'brute', 3, 0);
     d.disableNext = true;
     resolveShot(s, d, inv, {}, () => {});
-    expect(d.disableNext).toBe(false);
+    expect(inv.hp).toBeGreaterThan(0);
+    expect(d.disableNext).toBe(true);
     expect(s.husks).toHaveLength(0);
+    inv.hp = 1;
+    resolveShot(s, d, inv, {}, () => {});
+    expect(s.husks).toHaveLength(1);
+    expect(d.disableNext).toBe(false);
   });
 });
 
@@ -187,6 +192,15 @@ describe('Siege Breacher', () => {
     expect(r.state.units.find((u) => u.id === breacherId)!.pos).toEqual({ x: 8, y: 1 });
     const hurt = r.state.units.find((u) => u.id === d.id);
     expect(hurt === undefined || hurt.hp <= CONFIG.drones.worker.hp - CONFIG.boss.drillCrush).toBe(true);
+  });
+
+  it('an escort standing in the tunnel steps aside instead of stalling the drill', () => {
+    const { s, breacherId } = arena();
+    const escort = addInvader(s, 'brute', 7, 1);
+    const r = run(s, { type: 'endTurn' });
+    expect(r.state.units.find((u) => u.id === breacherId)!.pos).toEqual({ x: 6, y: 1 });
+    expect(r.state.boss!.progress).toBe(CONFIG.boss.drillSpeed);
+    expect(r.state.units.find((u) => u.id === escort.id)).toBeDefined();
   });
 
   it('drives down the tunnel and drains the bridge hard once it arrives', () => {

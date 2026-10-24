@@ -20,6 +20,8 @@ export function DronePanel({ drone, actions }: { drone: Unit | undefined; action
     <div className="unit">
       <div className="unit-name">
         {drone.name} {drone.overwatch && <span className="tag ow">OVERWATCH</span>}
+        {drone.aimBonus > 0 && <span className="tag ow">AIM +{drone.aimBonus}</span>}
+        {drone.disableNext && <span className="tag ow" title="Its next lethal shot leaves a husk">DISABLE</span>}
       </div>
       <div className="unit-type">
         {DRONES[drone.type as 'sentry' | 'worker'].name} · {drone.kills} kill{drone.kills === 1 ? '' : 's'}

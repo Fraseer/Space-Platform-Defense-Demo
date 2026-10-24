@@ -104,12 +104,13 @@ export function runBoss(s: GameState, emit: Emit): void {
     const next = boss.tunnel[boss.progress];
     if (drillTile(s, next)) drilled.push({ ...next });
     const blocker = unitAt(s, next);
-    if (blocker) {
-      if (drilled.length) emit({ type: 'drilled', tiles: drilled.splice(0) });
-      if (blocker.side === 'drone') applyDamage(s, blocker, CONFIG.boss.drillCrush, breacher.id, emit, { cause: 'drill' });
+    if (drilled.length) emit({ type: 'drilled', tiles: drilled.splice(0) });
+    if (blocker?.side === 'drone') {
+      applyDamage(s, blocker, CONFIG.boss.drillCrush, breacher.id, emit, { cause: 'drill' });
       break; // the drill is jammed for the rest of this turn
     }
-    if (drilled.length) emit({ type: 'drilled', tiles: drilled.splice(0) });
+    // An escort in the way steps back into the tunnel behind the drill instead of stalling it.
+    if (blocker) moveAlong(s, blocker, [{ ...breacher.pos }], emit);
     boss.progress++;
     if (!moveAlong(s, breacher, [next], emit)) return; // killed by overwatch
     if (s.status !== 'playing') return;

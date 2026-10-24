@@ -100,10 +100,17 @@ export function resolveShot(s: GameState, shooter: Unit, target: Unit, opts: { o
     info,
     shooterSeen: shipSeesUnit(s, shooter),
   });
-  const disable = shooter.disableNext;
+  // Disable waits for a lethal shot ("next lethal shot"), so a miss or a chip hit doesn't waste it.
+  const lethal = target.hp <= dealtDamage(target, raw);
+  const disable = shooter.disableNext && lethal;
   shooter.aimBonus = 0;
-  shooter.disableNext = false;
+  if (lethal) shooter.disableNext = false;
   return applyDamage(s, target, raw, shooter.id, emit, { disable });
+}
+
+/** Damage that actually lands after the target's damage reduction (always at least 1). */
+function dealtDamage(target: Unit, amount: number): number {
+  return Math.max(1, amount - stats(target).damageReduction);
 }
 
 /** Deals damage; handles death, kill counts and matter. Returns true if the unit is gone. */
@@ -115,7 +122,7 @@ export function applyDamage(
   emit: Emit,
   opts: { disable?: boolean; cause?: 'shot' | 'vent' | 'drill' } = {},
 ): boolean {
-  const reduced = Math.max(1, amount - stats(target).damageReduction);
+  const reduced = dealtDamage(target, amount);
   target.hp = Math.max(0, target.hp - reduced);
   emit({ type: 'damaged', unitId: target.id, amount: reduced, hp: target.hp });
   if (target.hp > 0) return false;

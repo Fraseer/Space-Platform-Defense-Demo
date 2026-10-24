@@ -29,7 +29,7 @@ command posts, shop, events, procgen, factions, meta-progression).
   there were straight routes from the outer ring to the centre. Fixed with
   staggered gates (§3.1): Runners now need 3–4 turns, Saboteurs 4–5, Brutes 5–6.
 - **(bot) Turtling on the bridge is strong.** A bot that parks everything on
-  the bridge, overwatches and shoots wins about 75% of runs. That pulls against
+  the bridge, overwatches and shoots wins about 63% of runs (75% before the drill fix). That pulls against
   the "greed vs safety" pillar; see open questions (§6).
 - **(bot) A kept hand clogs.** With "draw up to 5, keep unplayed cards",
   situational cards (Vent Section, Scan, Kill the Lights) sat in hand forever
@@ -38,6 +38,41 @@ command posts, shop, events, procgen, factions, meta-progression).
   the build (bot win rate went from 0/20 to 17/20).
 - **(bot) Doing nothing loses at rounds 13–16** on the current map, so the
   threat is real.
+- **(claude playtest) Two full runs played by Claude through the real sim,**
+  seeing only what the player sees. Seed 101: won at round 27 (bridge 14/24,
+  14 kills, captured a Brute, disabled the boss). Seed 202: lost at round 25
+  (bridge overridden; captured a Brute and a Saboteur). What jumped out:
+  - *Worked:* overwatch lanes plus Targeting Uplink feel good; the capture
+    loop works end to end; losing a veteran drone hurts; Kill the Lights plus
+    drone sensors is a real combo.
+  - *Bugs, now fixed:* Disable Shot was used up by any shot, even a miss
+    (it now waits for a lethal one); the boss's escorts standing in the
+    tunnel stalled the drill for good (they now step aside); a log line
+    said "brute" instead of "Brute".
+  - *Vent Section on an airlock bay the turn a breach lands* wiped 4 of 5
+    invaders for 3 power, because the whole wave spawns in one room.
+  - *Corking:* two drones can block a 1-wide corridor and trap a wave.
+  - *The Drill Rig is a trap.* Only one tile (straight above it) gives a good
+    shot (75%); everywhere else is 35% because of hull-wall cover, and that
+    tile sits next to the boss and its escorts. "Stop the drill" lost a
+    drone for nothing; shooting the Breacher was the only real plan.
+  - *The boss phase is a grind:* 8–10 rounds, because the Breacher has full
+    cover from the sides of its own tunnel. Runs take 25–27 rounds, longer
+    than the bot's ~23.
+  - *Grazes on 5% shots still hurt:* two 5% grazes finished a Sentry.
+  - *Overwatch fires at the first invader it sees, whatever the odds* (45%,
+    5%), then it's spent; a Saboteur walked past behind it to break the
+    generator.
+  - *Matter piles up* (20–29 by mid-run) because building a drone needs a
+    Fabricate card in hand.
+  - *Your own reinforcements are slow* on the staggered map: the generator
+    room is about 3 turns from the bridge.
+  - *Drones on the bridge see almost nothing,* so turtling there is blind.
+  - *Power:* with 5 drones income drops to 1; brownout never triggered.
+  - Minor: the breach panel says "No breaches detected" while invaders are
+    still aboard.
+- **(bot) Fixing the drill stall made the boss harder:** bot win rate went
+  from 75% to 63% (25/40, ~22.9 rounds), with several wins at 1–3 bridge.
 - **(build) Hand-made maps break easily.** The first map had four doors that
   opened onto crates, a relay or nothing, and a room cut in two by its own
   furniture. Map tests now catch this. Procgen will need the same checks.
@@ -133,9 +168,12 @@ command posts, shop, events, procgen, factions, meta-progression).
 - It drills 2 tiles per turn straight at the bridge, **ignoring the maze**
   (walls, cover and doors become rubble), so it punishes turtling.
 - Boss units are never blips and the drill route is always drawn.
+- A drone in the drill's path takes 6 damage and jams the drill for that
+  turn; an escort in the way steps back into the tunnel instead.
 
 ### 3.9 Capturing tech (DESIGN §6)
-- Disable Shot → the next lethal shot leaves a husk → a Worker hauls it
+- Disable Shot → the drone's next lethal shot this round leaves a husk
+  (shots that don't kill don't use it up) → a Worker hauls it
   (−2 move) to the fabricator → choose 1 of 3 module cards for that invader
   type → play it on a drone to install it permanently.
 - Module pools used:
@@ -168,7 +206,7 @@ command posts, shop, events, procgen, factions, meta-progression).
 | Saboteur | 6 HP, move 4, aim 60, dmg 3 |
 | Bridge integrity | 24 |
 | Starting deck | 17 cards (2× Fabricate Sentry, 2× Overclock, 2× Uplink, 2× Reroute, 2× Disable Shot, singles of the rest) |
-| Bot results | 75% wins, ~22.6 rounds (same bot on the old map: 88%) |
+| Bot results | 63% wins, ~22.9 rounds (75% before the drill-stall fix; 88% on the old map) |
 
 ## 5. Architecture lessons for the Godot build (DESIGN §10)
 
@@ -198,7 +236,18 @@ command posts, shop, events, procgen, factions, meta-progression).
 5. **Plasma Cutter in act 1.** Add a regular (non-boss) Breacher to act 1 so
    the cutter can be captured mid-act, or keep it as a later-act reward?
 6. **Bridge integrity.** Should it ever regenerate (e.g. Worker repair)?
-7. **Map size for procgen.** 25×25 with four staggered rings felt right. Keep
+7. **Boss climax.** The Rig is a trap and the Breacher is an 8–10 round grind
+   (§2). Options: give the Rig a second approach or less cover, lower the
+   Breacher's HP or its tunnel cover, or make the drill speed up over time
+   so the grind can't be waited out.
+8. **Vent Section vs breaches.** Allow venting the airlock bay on the landing
+   turn (a satisfying "spaced them" moment, but it erases a wave), or block
+   it for a round after a breach?
+9. **Low-odds shots.** Should a 5% shot still graze? Should overwatch skip
+   shots below some chance and wait for a better one?
+10. **Matter sink.** Let the fabricator build without a card (at a higher
+    cost), or add more matter uses?
+11. **Map size for procgen.** 25×25 with four staggered rings felt right. Keep
    it as the target size for generated decks?
 
 ## 7. Suggested DESIGN.md updates (for Fraser to confirm)
