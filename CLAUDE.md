@@ -82,9 +82,15 @@ When you add something new to the map, draw it in `src/ui/glyphs.tsx` and add
 an entry to the key (`src/ui/MapKey.tsx`).
 
 `src/sim/content/map.ts` holds the command deck as ASCII rows plus zone
-rectangles (rooms/corridors used for lighting) and relay definitions. The map
-test checks every floor tile is in a zone and every airlock can reach the
-bridge. Movement is 4-directional.
+rectangles (rooms/corridors used for lighting, each tagged with its ring) and
+relay definitions. Movement is 4-directional.
+
+The deck is four rings (hull → systems → inner corridor → bridge) with
+**staggered gates**: hull→systems doors only at the corners, systems→inner only
+west/east, inner→bridge only north/south, so there is no straight run to the
+centre. `map.test.ts` enforces this: every floor tile in a zone, no dead doors
+(each door joins two walkable tiles), doors only between neighbouring rings,
+gates staggered, and every invader at least 3 turns from the bridge.
 
 ## Rules worth knowing before changing code
 

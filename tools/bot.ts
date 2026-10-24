@@ -6,8 +6,8 @@ import { withinReach } from '../src/sim/actions';
 import { canTarget, previewShot, type ShotPreview } from '../src/sim/combat';
 import { CARDS } from '../src/sim/content/cards';
 import { cardError } from '../src/sim/effects';
-import { distance } from '../src/sim/grid';
-import { moveOptions } from '../src/sim/pathfinding';
+import { distance, idx } from '../src/sim/grid';
+import { goalField, moveOptions } from '../src/sim/pathfinding';
 import { applyCommand } from '../src/sim/reducer';
 import type { CardTarget, Command, GameState, Unit, Vec } from '../src/sim/types';
 
@@ -37,11 +37,19 @@ function bestShot(s: GameState, d: Unit): { u: Unit; p: ShotPreview } | null {
 
 const unit = (s: GameState, id: number) => s.units.find((u) => u.id === id);
 
+/** One 1-AP move along real walking distance toward the tiles around `goal`. */
 function stepToward(s: GameState, d: Unit, goal: Vec): GameState {
+  const around: number[] = [];
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++) {
+      const p = { x: goal.x + dx, y: goal.y + dy };
+      if (p.x >= 0 && p.y >= 0 && p.x < s.width && p.y < s.height) around.push(idx(s, p));
+    }
+  const field = goalField(s, around);
   const opts = moveOptions(s, d)
     .filter((o) => o.ap === 1)
-    .sort((a, b) => distance(a.pos, goal) - distance(b.pos, goal));
-  if (opts[0] && distance(opts[0].pos, goal) < distance(d.pos, goal)) return act(s, { type: 'move', unitId: d.id, to: opts[0].pos });
+    .sort((a, b) => field[idx(s, a.pos)] - field[idx(s, b.pos)]);
+  if (opts[0] && field[idx(s, opts[0].pos)] < field[idx(s, d.pos)]) return act(s, { type: 'move', unitId: d.id, to: opts[0].pos });
   return s;
 }
 
