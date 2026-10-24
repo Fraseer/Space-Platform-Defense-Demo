@@ -1,0 +1,19 @@
+{
+  "//": "The simulation must compile with no DOM types and no React. Do not add them here.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": []
+  },
+  "include": ["src/sim"],
+  "exclude": ["src/sim/__tests__"]
+}
