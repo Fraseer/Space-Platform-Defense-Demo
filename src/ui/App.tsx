@@ -9,7 +9,10 @@ import {
   droneCan,
   idx,
   moveOptions,
+  planIntents,
   planMove,
+  scoreTilesFor,
+  stats,
   powerIncome,
   previewShot,
   repairCost,
@@ -24,7 +27,7 @@ import {
 } from '../sim';
 import { Hand } from './Hand';
 import { MapView, type TileHighlight } from './MapView';
-import { DronePanel, InvaderInfo, LogList, Roster, ShotPanel, type DroneAction } from './panels';
+import { BreachPanel, BridgeBar, DronePanel, GameOver, InvaderInfo, LogList, Roster, ShotPanel, type DroneAction } from './panels';
 import { toDisplay, useGame } from './useGame';
 
 function readSeed(): number {
@@ -74,6 +77,8 @@ export function App() {
   const [targetId, setTargetId] = useState<number | null>(null);
   const [cardUid, setCardUid] = useState<number | null>(null);
   const [hover, setHover] = useState<Vec | null>(null);
+  const [tactical, setTactical] = useState(true);
+  const [debug, setDebug] = useState(false);
 
   const selected = selectedId !== null ? unitById(state, selectedId) : undefined;
   const drone = selected && selected.side === 'drone' ? selected : undefined;
@@ -135,6 +140,19 @@ export function App() {
   const shotPreview = drone && shotTarget ? previewShot(state, drone, shotTarget) : null;
 
   const units = game.playback ? game.playback.units : state.units.map((u) => toDisplay(u));
+
+  // Tactical overlay: enemy intent, weapon ranges. Debug: AI tile scores.
+  const intents = useMemo(() => (tactical && !game.busy && state.status === 'playing' ? planIntents(state) : undefined), [state, tactical, game.busy]);
+  const rings: { center: Vec; radius: number; kind: 'optimal' | 'max' | 'sensor' | 'overwatch' }[] = [];
+  if (drone && !game.busy) {
+    rings.push({ center: drone.pos, radius: stats(drone).optimalRange, kind: 'optimal' });
+    rings.push({ center: drone.pos, radius: stats(drone).maxRange, kind: 'max' });
+  }
+  if (tactical && !game.busy)
+    for (const d of state.units)
+      if (d.side === 'drone' && d.overwatch && d.id !== drone?.id) rings.push({ center: d.pos, radius: stats(d).maxRange, kind: 'overwatch' });
+  const scoreSubject = pinnedTarget?.side === 'invader' ? pinnedTarget : hoverUnit?.side === 'invader' ? hoverUnit : undefined;
+  const scores = useMemo(() => (debug && scoreSubject && !game.busy ? scoreTilesFor(state, scoreSubject.id) : undefined), [debug, scoreSubject, state, game.busy]);
 
   const fire = (target: Unit) => {
     if (!drone) return;
@@ -244,6 +262,8 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       if (k === 'e') endTurn();
+      else if (k === 't') setTactical((v) => !v);
+      else if (k === 'd') setDebug((v) => !v);
       else if (e.key === 'Tab') {
         e.preventDefault();
         cycleDrone();
@@ -264,8 +284,7 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const newRun = () => {
-    const s = Math.floor(Math.random() * 1_000_000);
+  const restartWith = (s: number) => {
     writeSeed(s);
     setSeed(s);
     game.restart(s);
@@ -273,6 +292,7 @@ export function App() {
     setTargetId(null);
     setCardUid(null);
   };
+  const newRun = () => restartWith(Math.floor(Math.random() * 1_000_000));
 
   const inspect = pinnedTarget?.side === 'invader' ? pinnedTarget : hoverUnit?.side === 'invader' ? hoverUnit : undefined;
   const hoverError = card && hover ? (() => {
@@ -293,7 +313,16 @@ export function App() {
         <div className="res matter" title="Matter is banked. Salvage and kills add it; fabricating and repairs spend it.">
           ◈ {state.matter} <span className="sub">matter</span>
         </div>
+        <BridgeBar state={state} />
         <div className="spacer" />
+        <div className="toggles">
+          <button className={tactical ? 'on' : ''} onClick={() => setTactical((v) => !v)} title="Enemy intent and weapon ranges">
+            Tactical (T)
+          </button>
+          <button className={debug ? 'on' : ''} onClick={() => setDebug((v) => !v)} title="AI tile scores for the invader under the mouse">
+            Debug (D)
+          </button>
+        </div>
         <div className="seed">
           seed {seed}
           <button onClick={newRun}>New run</button>
@@ -319,6 +348,9 @@ export function App() {
               setTargetId(null);
               setSelectedId(null);
             }}
+            intents={intents}
+            rings={rings}
+            scores={scores}
           />
           {card && (
             <div className="card-mode">
@@ -329,6 +361,10 @@ export function App() {
         </div>
 
         <aside className="side">
+          <section className="panel">
+            <h3>Breach countdown</h3>
+            <BreachPanel state={state} />
+          </section>
           <section className="panel">
             <h3>Drone</h3>
             <DronePanel drone={drone} actions={droneActions} />
@@ -372,6 +408,7 @@ export function App() {
           End turn (E)
         </button>
       </footer>
+      <GameOver state={state} onNewRun={newRun} onRetry={() => restartWith(seed)} />
     </div>
   );
 }

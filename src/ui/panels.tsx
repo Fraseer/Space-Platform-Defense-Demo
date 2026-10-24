@@ -1,7 +1,7 @@
 // Side-panel widgets. Read-only views of state; actions go through callbacks.
 
 import { useEffect, useState } from 'react';
-import { CONFIG, DRONES, INVADERS, stats, type GameState, type InvaderType, type ShotPreview, type Unit } from '../sim';
+import { CONFIG, DRONES, INVADERS, airlockName, stats, type GameState, type InvaderType, type ShotPreview, type Unit } from '../sim';
 
 import type { LogEntry } from './useGame';
 
@@ -118,6 +118,78 @@ export function LogList({ entries }: { entries: LogEntry[] }) {
           {e.text}
         </div>
       ))}
+    </div>
+  );
+}
+
+export function BreachPanel({ state }: { state: GameState }) {
+  const pending = state.breaches.filter((b) => b.announced && !b.arrived).sort((a, b) => a.arriveRound - b.arriveRound);
+  const contacts = state.units.filter((u) => u.side === 'invader').length;
+  const unannounced = state.breaches.filter((b) => !b.announced).length;
+  return (
+    <div className="breaches">
+      {pending.map((b) => {
+        const n = b.arriveRound - state.round;
+        const where = airlockName(state, b.airlock);
+        return (
+          <div key={b.index} className={`breach ${b.boss ? 'boss' : ''} ${n <= 1 ? 'soon' : ''}`}>
+            <span className="b-count">{n <= 0 ? 'NOW' : n}</span>
+            <span>
+              {b.boss ? `Boarding vessel docking at ${where}` : `Breach at ${where}`}
+              {n === 1 ? ' next turn' : n > 1 ? ` in ${n} turns` : ''}
+              {!b.boss && <span className="muted"> · {b.units.length} hostiles</span>}
+            </span>
+          </div>
+        );
+      })}
+      {pending.length === 0 && <div className="muted">No breaches detected. Quiet turn: explore, salvage, repair.</div>}
+      <div className="muted small">
+        {contacts} contact{contacts === 1 ? '' : 's'} aboard
+        {unannounced > 0 ? ` · ${unannounced} more breach${unannounced === 1 ? '' : 'es'} expected` : ''}
+      </div>
+    </div>
+  );
+}
+
+export function BridgeBar({ state }: { state: GameState }) {
+  const pct = (state.bridge.integrity / state.bridge.max) * 100;
+  return (
+    <div className="bridge-bar" title="Invaders standing on the bridge override it. At 0 the AI is shut down.">
+      <span className="sub">BRIDGE</span>
+      <div className="bar">
+        <div className={`fill ${pct <= 30 ? 'low' : ''}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span>
+        {state.bridge.integrity}/{state.bridge.max}
+      </span>
+    </div>
+  );
+}
+
+export function GameOver({ state, onNewRun, onRetry }: { state: GameState; onNewRun: () => void; onRetry: () => void }) {
+  if (state.status === 'playing') return null;
+  const st = state.stats;
+  return (
+    <div className="gameover">
+      <div className={`go-box ${state.status}`}>
+        <h2>{state.status === 'won' ? 'VICTORY' : 'DEFEAT'}</h2>
+        <p>{state.outcome}</p>
+        <table className="go-stats">
+          <tbody>
+            <tr><td>Rounds</td><td>{state.round}</td></tr>
+            <tr><td>Invaders destroyed</td><td>{st.kills}</td></tr>
+            <tr><td>Husks captured</td><td>{st.husksCaptured}</td></tr>
+            <tr><td>Drones built / lost</td><td>{st.dronesBuilt} / {st.dronesLost}</td></tr>
+            <tr><td>Matter gathered</td><td>{st.matterGained}</td></tr>
+            <tr><td>Cards played</td><td>{st.cardsPlayed}</td></tr>
+            <tr><td>Bridge integrity</td><td>{state.bridge.integrity}/{state.bridge.max}</td></tr>
+          </tbody>
+        </table>
+        <div className="actions">
+          <button onClick={onRetry}>Retry this seed</button>
+          <button onClick={onNewRun}>New run</button>
+        </div>
+      </div>
     </div>
   );
 }

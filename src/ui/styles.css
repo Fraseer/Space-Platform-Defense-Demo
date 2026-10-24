@@ -142,3 +142,31 @@ button.on { border-color: var(--drone); color: var(--drone); }
 .piles { color: var(--muted); font-size: 11px; display: flex; flex-direction: column; gap: 2px; margin-left: 6px; }
 .card-mode { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 10px; background: rgba(29, 26, 13, 0.94); border: 1px solid #5a4f1c; border-radius: 5px; pointer-events: none; }
 .bad { color: var(--bad); }
+
+.bridge-bar { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.bridge-bar .bar { width: 140px; height: 10px; background: #1b222b; border: 1px solid #2c3946; border-radius: 3px; overflow: hidden; }
+.bridge-bar .fill { height: 100%; background: var(--drone); transition: width 300ms; }
+.bridge-bar .fill.low { background: var(--bad); }
+.toggles { display: flex; gap: 6px; }
+
+.breaches { display: flex; flex-direction: column; gap: 4px; }
+.breach { display: flex; gap: 8px; align-items: center; color: var(--warn); }
+.breach.soon { color: var(--bad); font-weight: 700; }
+.breach.boss { color: #ff7ad9; font-weight: 700; }
+.b-count { display: inline-block; min-width: 30px; text-align: center; font-size: 15px; font-weight: 800; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; }
+
+.ring { stroke-width: 1; }
+.ring-max { stroke: rgba(63, 224, 255, 0.35); stroke-dasharray: 5 4; }
+.ring-optimal { stroke: rgba(63, 224, 255, 0.5); }
+.ring-sensor { stroke: rgba(127, 231, 196, 0.45); stroke-dasharray: 2 3; }
+.ring-overwatch { stroke: rgba(232, 251, 255, 0.35); stroke-dasharray: 1 3; }
+
+.gameover { position: fixed; inset: 0; background: rgba(4, 6, 8, 0.78); display: flex; align-items: center; justify-content: center; z-index: 10; }
+.go-box { background: var(--panel); border: 2px solid var(--panel-edge); border-radius: 10px; padding: 20px 28px; min-width: 360px; }
+.go-box.won { border-color: var(--good); }
+.go-box.lost { border-color: var(--bad); }
+.go-box h2 { margin: 0 0 6px; letter-spacing: 0.2em; }
+.go-box.won h2 { color: var(--good); }
+.go-box.lost h2 { color: var(--bad); }
+.go-stats { width: 100%; margin: 10px 0; }
+.go-stats td:last-child { text-align: right; font-weight: 700; }

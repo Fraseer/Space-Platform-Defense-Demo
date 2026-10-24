@@ -147,6 +147,26 @@ export function useGame(seed: number) {
           case 'enemyPhase':
             await wait(150);
             break;
+          case 'breach':
+            await wait(350);
+            break;
+          case 'bridgeDamaged': {
+            const core = names.systems.find((x) => x.kind === 'core');
+            if (core) addFx({ id: fxId++, kind: 'float', at: core.pos, text: `−${e.amount} BRIDGE`, tone: 'hit' }, 1200);
+            await wait(300);
+            break;
+          }
+          case 'systemSabotaged': {
+            const sys = names.systems.find((x) => x.id === e.systemId);
+            if (sys) addFx({ id: fxId++, kind: 'float', at: sys.pos, text: 'SABOTAGED', tone: 'hit' }, 1200);
+            await wait(250);
+            break;
+          }
+          case 'systemRepaired': {
+            const sys = names.systems.find((x) => x.id === e.systemId);
+            if (sys) addFx({ id: fxId++, kind: 'float', at: sys.pos, text: 'ONLINE', tone: 'heal' }, 1000);
+            break;
+          }
           default:
             break;
         }

@@ -214,7 +214,7 @@ export type GameEvent =
   | { type: 'killed'; unitId: number; byId: number | null; cause: 'shot' | 'vent' | 'drill' | 'recycle' }
   | { type: 'disabled'; unitId: number; huskId: number }
   | { type: 'unitSpawned'; unit: Unit; seen: boolean }
-  | { type: 'overwatchSet'; unitId: number }
+  | { type: 'overwatchSet'; unitId: number; auto?: boolean }
   | { type: 'apGained'; unitId: number; amount: number }
   | { type: 'healed'; unitId: number; amount: number }
   | { type: 'cardPlayed'; cardId: string; uid: number }

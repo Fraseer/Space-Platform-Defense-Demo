@@ -3,7 +3,8 @@
 import { CONFIG } from './config';
 import { COMMAND_DECK, type MapDef } from './content/map';
 import { rngShuffle, rngInt } from './rng';
-import { createDrone, createInvader } from './units';
+import { createDrone } from './units';
+import { openingWarnings } from './director';
 import { drawUpTo, refillPower } from './economy';
 import type { Breach, CardInstance, DroneType, GameEvent, GameState, InvaderType, SystemKind, TileKind, Vec } from './types';
 
@@ -90,6 +91,9 @@ function systemFor(ch: string, map: MapDef): { kind: SystemKind; name: string; l
   return { kind: 'relay', name: relay.name, lights: relay.lights };
 }
 
+/** The Siege Breacher arrives in milestone 6; until then surviving breach 3 wins. */
+const INCLUDE_BOSS = false;
+
 function buildBreaches(s: GameState): Breach[] {
   const ids = s.airlocks.map((a) => a.id);
   const order = rngShuffle(s, ids);
@@ -104,6 +108,7 @@ function buildBreaches(s: GameState): Breach[] {
     boss: false,
   }));
   const boss = CONFIG.act1.boss;
+  if (!INCLUDE_BOSS) return breaches;
   breaches.push({
     index: breaches.length,
     airlock: ids[rngInt(s, ids.length)],
@@ -155,10 +160,7 @@ export function newGame(seed: number, map: MapDef = COMMAND_DECK): GameState {
   refillPower(s);
 
   s.breaches = buildBreaches(s);
-
-  // Milestone 1 "tactics toy": one invader walks toward the bridge.
-  const a = s.airlocks[0];
-  s.units.push(createInvader(s, 'runner', a.pos));
+  openingWarnings(s);
   return s;
 }
 
@@ -170,5 +172,6 @@ export function wakeUpEvents(s: GameState): GameEvent[] {
     { type: 'log', text: 'Fabricator online.', tone: 'info' },
   ];
   for (const u of s.units.filter((x) => x.side === 'drone')) events.push({ type: 'log', text: `${u.name} online.`, tone: 'good' });
+  for (const b of s.breaches.filter((x) => x.announced)) events.push({ type: 'breachWarning', airlock: b.airlock, inRounds: b.arriveRound - s.round, boss: b.boss });
   return events;
 }

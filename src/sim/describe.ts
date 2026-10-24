@@ -1,6 +1,7 @@
 // Human-readable log lines for events. Returns null for events that don't need a line.
 
 import { CARDS } from './content/cards';
+import { airlockName } from './director';
 import { MODULES } from './content/modules';
 import type { GameEvent, GameState } from './types';
 
@@ -37,7 +38,7 @@ export function describeEvent(e: GameEvent, s: GameState): LogLine | null {
       return { text: `${victim?.name ?? 'Unit'} ${verb}${by}.`, tone: victim?.side === 'drone' ? 'bad' : 'good' };
     }
     case 'overwatchSet':
-      return { text: `${nameOf(s, e.unitId)} on overwatch.`, tone: 'info' };
+      return e.auto ? null : { text: `${nameOf(s, e.unitId)} on overwatch.`, tone: 'info' };
     case 'matterChanged':
       return e.delta === 0 ? null : { text: `${e.delta > 0 ? '+' : ''}${e.delta} matter (${e.reason}).`, tone: e.delta > 0 ? 'good' : 'info' };
     case 'cardPlayed':
@@ -66,6 +67,22 @@ export function describeEvent(e: GameEvent, s: GameState): LogLine | null {
       return { text: `Scan pulse: contacts within ${e.radius} tiles revealed.`, tone: 'info' };
     case 'moduleInstalled':
       return { text: `${nameOf(s, e.unitId)} installed ${MODULES[e.moduleId]?.name ?? e.moduleId}.`, tone: 'good' };
+    case 'breachWarning': {
+      const when = e.inRounds <= 1 ? 'next turn' : `in ${e.inRounds} turns`;
+      return e.boss
+        ? { text: `WARNING: boarding vessel docking at ${airlockName(s, e.airlock)} ${when}. Bring your drones home.`, tone: 'bad' }
+        : { text: `Breach detected: ${airlockName(s, e.airlock)} ${when}.`, tone: 'warn' };
+    }
+    case 'breach':
+      return { text: e.boss ? `The boarding vessel has docked at ${airlockName(s, e.airlock)}!` : `BREACH at ${airlockName(s, e.airlock)}!`, tone: 'bad' };
+    case 'bridgeDamaged':
+      return { text: `Bridge override in progress: −${e.amount} integrity (${e.integrity} left).`, tone: 'bad' };
+    case 'systemSabotaged': {
+      const sys = s.systems.find((x) => x.id === e.systemId);
+      return { text: `${sys?.name ?? 'A system'} sabotaged${e.seen ? ` by ${nameOf(s, e.byId)}` : ''}!`, tone: 'bad' };
+    }
+    case 'gameOver':
+      return { text: e.status === 'won' ? `VICTORY. ${e.outcome}` : `DEFEAT. ${e.outcome}`, tone: e.status === 'won' ? 'good' : 'bad' };
     case 'brownout':
       return { text: `Brownout: upkeep exceeds income. ${e.unitIds.map((id) => nameOf(s, id)).join(', ')} start with reduced AP.`, tone: 'bad' };
     default:

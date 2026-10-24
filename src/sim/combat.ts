@@ -6,7 +6,7 @@ import { DIRS4, coverOf, distance, hasLineOfSight } from './grid';
 import { gainMatter } from './economy';
 import { rngRoll } from './rng';
 import { hasModule, stats, unitById } from './units';
-import { invaderAimPenaltyFromDark, shipCanSee } from './vision';
+import { invaderAimPenaltyFromDark, invaderCanSee, shipCanSee } from './vision';
 import type { Emit } from './actions';
 import type { GameState, InvaderType, ShotInfo, Unit, Vec } from './types';
 
@@ -52,7 +52,7 @@ export function canTarget(s: GameState, shooter: Unit, target: Unit, from: Vec =
   if (distance(from, target.pos) > st.maxRange) return false;
   if (!hasLineOfSight(s, from, target.pos)) return false;
   if (shooter.side === 'drone') return shipCanSee(s, target.pos);
-  return true;
+  return invaderCanSee(s, from, target.pos);
 }
 
 /** Hit chance and damage for a shot, with every modifier listed. */

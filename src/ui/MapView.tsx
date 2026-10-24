@@ -1,7 +1,7 @@
 // Top-down SVG grid. Placeholder shapes: cyan drones, orange invaders.
 
 import { memo } from 'react';
-import type { GameState, Vec } from '../sim';
+import type { GameState, Intent, TileScore, Vec } from '../sim';
 import type { DisplayUnit, Fx } from './useGame';
 
 export const TILE = 28;
@@ -24,6 +24,42 @@ interface Props {
   onTileClick: (p: Vec) => void;
   onTileHover: (p: Vec | null) => void;
   onTileContext?: (p: Vec) => void;
+  intents?: Intent[];
+  rings?: { center: Vec; radius: number; kind: 'optimal' | 'max' | 'sensor' | 'overwatch' }[];
+  scores?: TileScore[];
+}
+
+const center = (p: Vec) => ({ x: p.x * TILE + TILE / 2, y: p.y * TILE + TILE / 2 });
+
+function IntentLayer({ state, intents }: { state: GameState; intents: Intent[] }) {
+  return (
+    <g pointerEvents="none">
+      {intents.map((it) => {
+        const pts = [it.from, ...it.path].map(center);
+        const end = pts[pts.length - 1];
+        const target = it.action?.kind === 'shoot' ? state.units.find((u) => u.id === (it.action as { targetId: number }).targetId) : undefined;
+        const sys = it.action?.kind === 'sabotage' ? state.systems.find((x) => x.id === (it.action as { systemId: number }).systemId) : undefined;
+        return (
+          <g key={it.unitId}>
+            {pts.length > 1 && (
+              <>
+                <polyline points={pts.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#ff8a2a" strokeWidth={1.6} strokeDasharray="4 3" opacity={0.85} />
+                <circle cx={end.x} cy={end.y} r={4} fill="none" stroke="#ff8a2a" strokeWidth={1.5} />
+              </>
+            )}
+            {target && (
+              <line x1={end.x} y1={end.y} x2={center(target.pos).x} y2={center(target.pos).y} stroke="#ff5d5d" strokeWidth={1.4} strokeDasharray="2 3" />
+            )}
+            {sys && (
+              <text x={center(sys.pos).x} y={center(sys.pos).y - 12} textAnchor="middle" fontSize={13} fill="#ff5d5d" fontWeight={700}>
+                ⚠
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
 }
 
 const C = {
@@ -249,6 +285,33 @@ export function MapView(p: Props) {
         </g>
       )}
       {p.hover && <rect x={p.hover.x * TILE} y={p.hover.y * TILE} width={TILE} height={TILE} fill="none" stroke="#ffffff55" strokeWidth={1} pointerEvents="none" />}
+      {p.rings && (
+        <g pointerEvents="none">
+          {p.rings.map((r, i) => (
+            <circle
+              key={i}
+              cx={center(r.center).x}
+              cy={center(r.center).y}
+              r={r.radius * TILE}
+              fill="none"
+              className={`ring ring-${r.kind}`}
+            />
+          ))}
+        </g>
+      )}
+      {p.intents && <IntentLayer state={state} intents={p.intents} />}
+      {p.scores && (
+        <g pointerEvents="none">
+          {(() => {
+            const best = Math.max(...p.scores.map((s) => s.score));
+            return p.scores.map((s, i) => (
+              <text key={i} x={center(s.pos).x} y={center(s.pos).y + 3} textAnchor="middle" fontSize={8} fill={s.score === best ? '#ffe066' : '#ff8a2a'} opacity={s.score === best ? 1 : 0.75}>
+                {s.score.toFixed(0)}
+              </text>
+            ));
+          })()}
+        </g>
+      )}
       <g>
         {p.units.map((u) => (
           <UnitShape key={u.id} u={u} selected={u.id === p.selectedId} targeted={u.id === p.targetId} />

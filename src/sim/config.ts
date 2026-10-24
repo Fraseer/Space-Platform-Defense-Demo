@@ -75,7 +75,7 @@ export const CONFIG = {
     sealedDoorCost: 6,
     weights: {
       runner: { progress: 10, cover: 2, shot: 2, flank: 1, exposure: 1 },
-      brute: { progress: 3, cover: 4, shot: 6, flank: 3, exposure: 2 },
+      brute: { progress: 2, cover: 6, shot: 6, flank: 3, exposure: 3 },
       saboteur: { progress: 8, cover: 3, shot: 2, flank: 1, exposure: 2 },
     } as Record<string, { progress: number; cover: number; shot: number; flank: number; exposure: number }>,
     /** Score bonus for standing on a bridge tile (Runners override it). */

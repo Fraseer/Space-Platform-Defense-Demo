@@ -3,7 +3,7 @@
 
 import { doMove, doOverwatch, doRepair, doSalvage, doShoot } from './actions';
 import { playCard } from './effects';
-import { endTurn } from './turn';
+import { checkVictory, endTurn } from './turn';
 import { clone } from './util';
 import { validateCommand } from './validate';
 import type { Command, CommandResult, GameEvent, GameState } from './types';
@@ -37,5 +37,6 @@ export function applyCommand(state: GameState, cmd: Command): CommandResult {
       endTurn(s, emit);
       break;
   }
+  checkVictory(s, emit);
   return { ok: true, state: s, events };
 }
