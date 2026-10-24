@@ -1,7 +1,8 @@
 // Top-down SVG grid. Placeholder shapes: cyan drones, orange invaders.
 
 import { memo } from 'react';
-import type { GameState, Intent, TileScore, Vec } from '../sim';
+import { INVADERS, repairCost, type GameState, type Intent, type SystemObj, type TileScore, type Vec } from '../sim';
+import { Icon, IconDefs, type IconName } from './icons';
 import type { DisplayUnit, Fx } from './useGame';
 
 export const TILE = 28;
@@ -55,11 +56,7 @@ function IntentLayer({ state, intents }: { state: GameState; intents: Intent[] }
             {target && (
               <line x1={end.x} y1={end.y} x2={center(target.pos).x} y2={center(target.pos).y} stroke="#ff5d5d" strokeWidth={1.4} strokeDasharray="2 3" />
             )}
-            {sys && (
-              <text x={center(sys.pos).x} y={center(sys.pos).y - 12} textAnchor="middle" fontSize={13} fill="#ff5d5d" fontWeight={700}>
-                ⚠
-              </text>
-            )}
+            {sys && <Icon name="warning" x={center(sys.pos).x} y={center(sys.pos).y - 16} size={13} color="#ff5d5d" />}
           </g>
         );
       })}
@@ -129,6 +126,12 @@ function Doors({ state }: { state: GameState }) {
   );
 }
 
+function systemTitle(s: SystemObj): string {
+  if (s.working) return `${s.name}: online`;
+  const cost = repairCost(s.kind);
+  return cost > 0 ? `${s.name}: offline. A Worker next to it can repair it for ${cost} matter.` : `${s.name}: offline`;
+}
+
 function Systems({ state }: { state: GameState }) {
   return (
     <g>
@@ -136,13 +139,11 @@ function Systems({ state }: { state: GameState }) {
         const cx = s.pos.x * TILE + TILE / 2;
         const cy = s.pos.y * TILE + TILE / 2;
         const color = s.working ? '#7fe7c4' : '#6b6f75';
-        const label = s.kind === 'fabricator' ? 'F' : s.kind === 'generator' ? 'G' : s.kind === 'relay' ? 'R' : '◆';
         return (
           <g key={s.id}>
+            <title>{systemTitle(s)}</title>
             <rect x={cx - TILE / 2 + 2} y={cy - TILE / 2 + 2} width={TILE - 4} height={TILE - 4} rx={4} fill="#1d262f" stroke={color} strokeWidth={1.5} strokeDasharray={s.working ? undefined : '3 2'} />
-            <text x={cx} y={cy + 4.5} textAnchor="middle" fontSize={13} fontWeight={700} fill={color}>
-              {label}
-            </text>
+            <Icon name={s.kind as IconName} x={cx} y={cy} size={18} color={color} />
           </g>
         );
       })}
@@ -154,14 +155,22 @@ function Systems({ state }: { state: GameState }) {
             <circle cx={sp.pos.x * TILE + TILE / 2} cy={sp.pos.y * TILE + TILE / 2} r={1.8} fill={C.salvage} />
           </g>
         ))}
-      {state.airlocks.map((a) => (
-        <g key={a.id}>
-          <rect x={a.pos.x * TILE + 1} y={a.pos.y * TILE + 1} width={TILE - 2} height={TILE - 2} fill="#2a1c12" stroke="#a8571c" strokeWidth={1.5} />
-          <text x={a.pos.x * TILE + TILE / 2} y={a.pos.y * TILE + TILE / 2 + 4.5} textAnchor="middle" fontSize={13} fontWeight={700} fill="#ff9d4d">
-            {a.id}
-          </text>
-        </g>
-      ))}
+      {state.airlocks.map((a) => {
+        const px = a.pos.x * TILE;
+        const py = a.pos.y * TILE;
+        return (
+          <g key={a.id}>
+            <title>{a.name}</title>
+            <rect x={px + 1} y={py + 1} width={TILE - 2} height={TILE - 2} fill="#2a1c12" stroke="#a8571c" strokeWidth={1.5} />
+            <Icon name="airlock" x={px + TILE / 2} y={py + TILE / 2} size={20} color="#ff9d4d" />
+            {/* The airlock's letter stays as a small tag: breach warnings name airlocks by it. */}
+            <rect x={px + TILE - 10} y={py + TILE - 10} width={9} height={9} rx={1.5} fill="#2a1c12" stroke="#a8571c" strokeWidth={0.8} />
+            <text x={px + TILE - 5.5} y={py + TILE - 2.8} textAnchor="middle" fontSize={7.5} fontWeight={700} fill="#ffb877">
+              {a.id}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -229,7 +238,12 @@ function UnitShape({ u, selected, targeted, reveal }: { u: DisplayUnit; selected
       {u.overwatch && <path d="M-11,9 Q0,15 11,9" fill="none" stroke="#e8fbff" strokeWidth={1.6} />}
       {shape}
       <g>{pips}</g>
-      {u.carrying && <rect x={-13} y={4} width={8} height={8} fill="#2a1c12" stroke="#ff8a2a" strokeWidth={1.4} />}
+      {u.carrying && (
+        <g>
+          <circle cx={-9} cy={8} r={5.5} fill="#2a1c12" stroke="#ff8a2a" strokeWidth={1} />
+          <Icon name="husk" x={-9} y={8} size={9} color="#ff9d4d" />
+        </g>
+      )}
       {u.side === 'drone' && u.kills > 0 && (
         <text x={10} y={13} fontSize={8} fontWeight={700} fill="#e8fbff">
           {u.kills}
@@ -271,6 +285,7 @@ export function MapView(p: Props) {
       }}
       onMouseLeave={() => p.onTileHover(null)}
     >
+      <IconDefs />
       <rect width={w} height={h} fill="#07090c" />
       <StaticTiles state={state} sight={p.sight} />
       <Doors state={state} />
@@ -333,15 +348,14 @@ export function MapView(p: Props) {
           ))}
         </g>
       )}
-      <g pointerEvents="none">
+      <g>
         {state.husks
           .filter((h) => h.carriedBy === null)
           .map((h) => (
-            <g key={h.id} transform={`translate(${center(h.pos).x},${center(h.pos).y})`}>
-              <rect x={-7} y={-7} width={14} height={14} fill="#2a1c12" stroke="#ff8a2a" strokeWidth={1.5} strokeDasharray="3 2" />
-              <text y={4} textAnchor="middle" fontSize={9} fontWeight={700} fill="#ff9d4d">
-                H
-              </text>
+            <g key={h.id}>
+              <title>{`${INVADERS[h.type].name} husk: a Worker can haul it to the fabricator for captured tech.`}</title>
+              <circle cx={center(h.pos).x} cy={center(h.pos).y} r={10} fill="#2a1c12" stroke="#a8571c" strokeWidth={1} strokeDasharray="3 2" />
+              <Icon name="husk" x={center(h.pos).x} y={center(h.pos).y} size={16} color="#ff9d4d" />
             </g>
           ))}
       </g>

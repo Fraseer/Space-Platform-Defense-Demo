@@ -36,15 +36,33 @@ Rig** at the airlock it docked at.
 - You keep unplayed cards and draw back up to 5. Once per turn you can scrap a
   card (right-click it).
 
-**Darkness.** Rooms are dark unless a Worker repairs the relay (R) that lights
-them. The ship sees lit rooms, and whatever is within a drone's sensor radius.
+**Darkness.** Rooms are dark unless a Worker repairs the lighting relay (bulb
+icon) that lights them. The ship sees lit rooms, and whatever is within a drone's sensor radius.
 Everything else is a pulsing **blip**: you know where it is, not what it is.
 Invaders need light: in the dark they see 3 tiles and lose aim.
 
 **Capturing tech.** Play Disable Shot, then make the kill: the invader becomes
-a husk. A Worker can pick it up and haul it to the fabricator (F). Pick one of
+a husk. A Worker can pick it up and haul it to the fabricator (print-head
+icon). Pick one of
 three module cards for that invader type, then play it on a drone to install it
 permanently.
+
+## Map icons
+
+Hover any system for its status and repair cost. Icons are standalone SVGs in
+[`src/ui/icons/`](src/ui/icons/), drawn in `currentColor` so the map can tint
+them (green = working, grey dashed = broken).
+
+| Icon | Meaning |
+|---|---|
+| Chip with an eye | AI core, in the middle of the bridge |
+| Print head and cube | Fabricator: new drones appear here; deliver husks here |
+| Lightning bolt | Generator: repair for +power each turn |
+| Bulb | Lighting relay: repair to light its rooms |
+| Sliding doors (with letter tag) | Airlock A/B/C, where breaches arrive |
+| Cracked shell | Husk of a disabled invader |
+| Warning triangle | An invader intends to sabotage this system |
+| Gold ring | Salvage spot |
 
 ## Controls
 
