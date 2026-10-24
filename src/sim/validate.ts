@@ -1,7 +1,10 @@
 // Command validation. Returns an error message, or null if the command is legal.
 // The UI uses the same checks to decide what to offer.
 
+import { repairCost, withinReach } from './actions';
 import { canTarget } from './combat';
+import { CARDS } from './content/cards';
+import { cardError } from './effects';
 import { DRONES, type DroneAbility } from './content/units';
 import { planMove } from './pathfinding';
 import { unitById } from './units';
@@ -44,6 +47,31 @@ export function validateCommand(s: GameState, cmd: Command): string | null {
       if (typeof u === 'string') return u;
       if (!droneCan(u, 'overwatch')) return `${u.name} can't overwatch.`;
       return null;
+    }
+    case 'salvage': {
+      const u = readyDrone(s, cmd.unitId);
+      if (typeof u === 'string') return u;
+      if (!droneCan(u, 'salvage')) return `${u.name} can't salvage.`;
+      const spot = s.salvage.find((x) => x.id === cmd.spotId);
+      if (!spot || spot.charges <= 0) return 'Nothing left to salvage there.';
+      if (!withinReach(u.pos, spot.pos)) return `${u.name} must stand on or next to the salvage.`;
+      return null;
+    }
+    case 'repair': {
+      const u = readyDrone(s, cmd.unitId);
+      if (typeof u === 'string') return u;
+      if (!droneCan(u, 'repair')) return `${u.name} can't repair.`;
+      const sys = s.systems.find((x) => x.id === cmd.systemId);
+      if (!sys || (sys.kind !== 'generator' && sys.kind !== 'relay')) return 'Nothing to repair there.';
+      if (sys.working) return `${sys.name} is already working.`;
+      if (!withinReach(u.pos, sys.pos)) return `${u.name} must be next to the ${sys.name}.`;
+      if (s.matter < repairCost(sys.kind)) return `Repair needs ${repairCost(sys.kind)} matter.`;
+      return null;
+    }
+    case 'playCard': {
+      const inst = s.deck.hand.find((c) => c.uid === cmd.uid);
+      if (!inst) return 'That card is not in your hand.';
+      return cardError(s, CARDS[inst.cardId], cmd.target);
     }
     case 'endTurn':
       return null;

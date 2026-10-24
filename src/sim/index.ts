@@ -15,3 +15,6 @@ export { COMMAND_DECK } from './content/map';
 export { DRONES, INVADERS } from './content/units';
 export { canTarget, previewShot, coverAgainst, type ShotPreview } from './combat';
 export { droneCan } from './validate';
+export { CARDS, type CardDef, type TargetKind } from './content/cards';
+export { cardError, fabricatorSpawnTile, zoneTiles } from './effects';
+export { repairCost, withinReach } from './actions';

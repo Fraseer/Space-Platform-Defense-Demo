@@ -142,7 +142,7 @@ export function killUnit(
       return;
     }
     emit({ type: 'killed', unitId: target.id, byId: sourceId, cause: opts.cause ?? 'shot' });
-    const drop = CONFIG.invaders[target.type as InvaderType].matterDrop;
+    const drop = opts.cause === 'vent' ? 0 : CONFIG.invaders[target.type as InvaderType].matterDrop;
     if (drop > 0) {
       gainMatter(s, drop);
       emit({ type: 'matterChanged', matter: s.matter, delta: drop, reason: `${target.name} salvaged` });

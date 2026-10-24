@@ -1,6 +1,8 @@
 // Drone actions and shared movement.
 
+import { CONFIG } from './config';
 import { canTarget, resolveShot, triggerOverwatch } from './combat';
+import { gainMatter } from './economy';
 import { planMove } from './pathfinding';
 import { shipCanSee } from './vision';
 import { unitById } from './units';
@@ -58,4 +60,38 @@ export function doOverwatch(s: GameState, cmd: Extract<Command, { type: 'overwat
   u.acted = true;
   u.overwatch = true;
   emit({ type: 'overwatchSet', unitId: u.id });
+}
+
+/** Chebyshev adjacency (or same tile): systems and salvage can be worked from a diagonal too. */
+export function withinReach(a: Vec, b: Vec): boolean {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= 1;
+}
+
+export function repairCost(kind: string): number {
+  return CONFIG.worker.repairCost[kind] ?? 0;
+}
+
+export function doSalvage(s: GameState, cmd: Extract<Command, { type: 'salvage' }>, emit: Emit): void {
+  const u = unitById(s, cmd.unitId)!;
+  const spot = s.salvage.find((x) => x.id === cmd.spotId)!;
+  u.ap -= 1;
+  u.acted = true;
+  spot.charges -= 1;
+  const amount = CONFIG.worker.salvageYield;
+  gainMatter(s, amount);
+  emit({ type: 'salvaged', unitId: u.id, spotId: spot.id, amount });
+  emit({ type: 'matterChanged', matter: s.matter, delta: amount, reason: 'salvage' });
+}
+
+export function doRepair(s: GameState, cmd: Extract<Command, { type: 'repair' }>, emit: Emit): void {
+  const u = unitById(s, cmd.unitId)!;
+  const sys = s.systems.find((x) => x.id === cmd.systemId)!;
+  const cost = repairCost(sys.kind);
+  u.ap -= 1;
+  u.acted = true;
+  s.matter -= cost;
+  sys.working = true;
+  sys.repaired = true;
+  emit({ type: 'matterChanged', matter: s.matter, delta: -cost, reason: `${sys.name} repair` });
+  emit({ type: 'systemRepaired', systemId: sys.id });
 }

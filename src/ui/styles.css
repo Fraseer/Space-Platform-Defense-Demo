@@ -30,7 +30,7 @@ button:hover:not(:disabled) { border-color: var(--drone); }
 button:disabled { opacity: 0.4; cursor: default; }
 button.on { border-color: var(--drone); color: var(--drone); }
 
-.app { display: flex; flex-direction: column; min-height: 100vh; }
+.app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
 .topbar, .bottombar {
   display: flex;
@@ -40,7 +40,7 @@ button.on { border-color: var(--drone); color: var(--drone); }
   background: var(--panel);
   border-bottom: 1px solid var(--panel-edge);
 }
-.bottombar { border-top: 1px solid var(--panel-edge); border-bottom: none; align-items: flex-end; min-height: 64px; }
+.bottombar { border-top: 1px solid var(--panel-edge); border-bottom: none; align-items: flex-end; padding: 8px 12px; }
 .title { font-weight: 700; letter-spacing: 0.08em; color: #e6f3ff; }
 .res { font-size: 16px; font-weight: 700; }
 .res .sub { font-size: 11px; font-weight: 400; color: var(--muted); }
@@ -49,11 +49,11 @@ button.on { border-color: var(--drone); color: var(--drone); }
 .spacer { flex: 1; }
 .seed { color: var(--muted); display: flex; gap: 8px; align-items: center; }
 
-.main { display: flex; gap: 12px; padding: 12px; flex: 1; align-items: flex-start; }
-.map-wrap { flex: 0 0 auto; }
-.map { display: block; max-width: calc(100vw - 380px); height: auto; cursor: crosshair; user-select: none; }
+.main { display: flex; gap: 12px; padding: 10px 12px; flex: 1; min-height: 0; align-items: flex-start; }
+.map-wrap { flex: 0 0 auto; position: relative; }
+.map { display: block; width: min(calc(100vh - 230px), calc(100vw - 400px)); height: auto; cursor: crosshair; user-select: none; }
 
-.side { flex: 1; min-width: 300px; max-width: 420px; display: flex; flex-direction: column; gap: 10px; }
+.side { flex: 1; min-width: 300px; max-width: 440px; height: 100%; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
 .panel { background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 6px; padding: 8px 10px; }
 .panel h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .muted { color: var(--muted); }
@@ -61,8 +61,8 @@ button.on { border-color: var(--drone); color: var(--drone); }
 .unit-name { font-size: 15px; font-weight: 700; color: var(--drone); }
 .unit-type, .unit-stats { color: var(--text); margin-top: 2px; }
 
-.log { flex: 1; }
-.log-list { height: 300px; overflow-y: auto; font-size: 12px; line-height: 1.45; }
+.log { flex: 1; min-height: 140px; display: flex; flex-direction: column; }
+.log-list { flex: 1; min-height: 100px; overflow-y: auto; font-size: 12px; line-height: 1.45; }
 .log-line.tone-warn { color: var(--warn); }
 .log-line.tone-bad { color: var(--bad); }
 .log-line.tone-good { color: var(--good); }
@@ -111,3 +111,34 @@ button.on { border-color: var(--drone); color: var(--drone); }
 .roster-row.sel { background: #13303a; }
 .r-name { color: var(--drone); font-weight: 700; }
 .r-ow { color: #bff6ff; }
+
+.hand { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.card {
+  width: 136px;
+  height: 128px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 8px;
+  background: #121a22;
+  border: 1px solid #2c3946;
+  border-radius: 7px;
+  transition: transform 80ms ease;
+}
+.card:hover:not(:disabled) { transform: translateY(-4px); }
+.card.sel { border-color: #ffe066; box-shadow: 0 0 0 1px #ffe066; transform: translateY(-6px); }
+.card.poor { opacity: 0.45; }
+.card-cost { display: flex; gap: 8px; font-weight: 700; }
+.c-power { color: #ffe066; }
+.c-matter { color: #c8b26a; }
+.card-name { font-weight: 700; color: #e6f3ff; font-size: 13px; }
+.card-type { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.card-text { font-size: 11px; line-height: 1.3; color: #aab7c3; overflow: hidden; }
+.card-fabricate { border-top: 3px solid #3fe0ff; }
+.card-tactical { border-top: 3px solid #7fe7c4; }
+.card-system { border-top: 3px solid #ffb347; }
+.card-module { border-top: 3px solid #c3a5ff; }
+.piles { color: var(--muted); font-size: 11px; display: flex; flex-direction: column; gap: 2px; margin-left: 6px; }
+.card-mode { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 10px; background: rgba(29, 26, 13, 0.94); border: 1px solid #5a4f1c; border-radius: 5px; pointer-events: none; }
+.bad { color: var(--bad); }

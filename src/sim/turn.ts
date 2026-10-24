@@ -18,7 +18,19 @@ export function endTurn(s: GameState, emit: Emit): void {
   }
   emit({ type: 'enemyPhase' });
   runEnemyPhase(s, emit);
+  tickTimers(s, emit);
   startRound(s, emit);
+}
+
+/** Counts down bulkheads, forced darkness and scans after the enemy phase. */
+export function tickTimers(s: GameState, emit: Emit): void {
+  for (const d of s.doors) {
+    if (d.sealedRounds <= 0) continue;
+    d.sealedRounds--;
+    if (d.sealedRounds === 0) emit({ type: 'doorUnsealed', pos: { ...d.pos } });
+  }
+  for (const z of s.zones) if (z.darkRounds > 0) z.darkRounds--;
+  s.scans = [];
 }
 
 export function startRound(s: GameState, emit: Emit): void {
@@ -31,6 +43,8 @@ export function startRound(s: GameState, emit: Emit): void {
     d.ap = browned.has(d.id) ? CONFIG.power.brownoutAp : CONFIG.turn.apPerTurn;
     d.acted = false;
     d.overwatch = false;
+    d.aimBonus = 0;
+    d.disableNext = false;
   }
   if (browned.size > 0) emit({ type: 'brownout', unitIds: [...browned] });
   emit({ type: 'powerChanged', power: s.power, reason: 'refill' });

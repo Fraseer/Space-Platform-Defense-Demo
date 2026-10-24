@@ -1,19 +1,28 @@
-// Layout and interaction state (selection, targeting, hover). Game rules live in src/sim.
+// Layout and interaction state (selection, targeting, card play, hover).
+// Game rules live in src/sim; this file only decides what to send.
 
 import { useEffect, useMemo, useState } from 'react';
 import {
+  CARDS,
   canTarget,
+  cardError,
   droneCan,
+  idx,
   moveOptions,
   planMove,
   powerIncome,
   previewShot,
+  repairCost,
   seedFrom,
   totalUpkeep,
   unitById,
+  withinReach,
+  type CardTarget,
+  type GameState,
   type Unit,
   type Vec,
 } from '../sim';
+import { Hand } from './Hand';
 import { MapView, type TileHighlight } from './MapView';
 import { DronePanel, InvaderInfo, LogList, Roster, ShotPanel, type DroneAction } from './panels';
 import { toDisplay, useGame } from './useGame';
@@ -33,7 +42,29 @@ function writeSeed(seed: number) {
   window.history.replaceState(null, '', url);
 }
 
-const at = (u: Unit, p: Vec) => u.pos.x === p.x && u.pos.y === p.y;
+const at = (u: { pos: Vec }, p: Vec) => u.pos.x === p.x && u.pos.y === p.y;
+
+/** Turns a clicked tile into the target a card needs, if it can be one. */
+function targetFromTile(s: GameState, kind: string, p: Vec): CardTarget | null {
+  switch (kind) {
+    case 'none':
+      return { kind: 'none' };
+    case 'drone': {
+      const u = s.units.find((x) => at(x, p) && x.side === 'drone');
+      return u ? { kind: 'unit', unitId: u.id } : null;
+    }
+    case 'door':
+      return s.doors.some((d) => at(d, p)) ? { kind: 'door', pos: p } : null;
+    case 'zone':
+    case 'room': {
+      const z = s.zoneOf[idx(s, p)];
+      return z >= 0 ? { kind: 'zone', zone: z } : null;
+    }
+    case 'tile':
+      return { kind: 'tile', pos: p };
+  }
+  return null;
+}
 
 export function App() {
   const [seed, setSeed] = useState(readSeed);
@@ -41,26 +72,63 @@ export function App() {
   const { state } = game;
   const [selectedId, setSelectedId] = useState<number | null>(() => state.units.find((u) => u.side === 'drone')?.id ?? null);
   const [targetId, setTargetId] = useState<number | null>(null);
+  const [cardUid, setCardUid] = useState<number | null>(null);
   const [hover, setHover] = useState<Vec | null>(null);
 
   const selected = selectedId !== null ? unitById(state, selectedId) : undefined;
   const drone = selected && selected.side === 'drone' ? selected : undefined;
   const pinnedTarget = targetId !== null ? unitById(state, targetId) : undefined;
   const hoverUnit = hover ? state.units.find((u) => at(u, hover)) : undefined;
+  const cardInst = cardUid !== null ? state.deck.hand.find((c) => c.uid === cardUid) : undefined;
+  const card = cardInst ? CARDS[cardInst.cardId] : undefined;
 
   const canShoot = !!drone && drone.ap > 0 && droneCan(drone, 'shoot');
-  const options = useMemo(() => (drone && !game.busy ? moveOptions(state, drone) : []), [state, drone, game.busy]);
+  const options = useMemo(() => (drone && !game.busy && !card ? moveOptions(state, drone) : []), [state, drone, game.busy, card]);
   const targets = useMemo(
-    () => (drone && canShoot && !game.busy ? state.units.filter((u) => u.side === 'invader' && canTarget(state, drone, u)) : []),
-    [state, drone, canShoot, game.busy],
+    () => (drone && canShoot && !game.busy && !card ? state.units.filter((u) => u.side === 'invader' && canTarget(state, drone, u)) : []),
+    [state, drone, canShoot, game.busy, card],
   );
 
-  const highlights: TileHighlight[] = [
-    ...options.map((o): TileHighlight => ({ pos: o.pos, kind: o.ap === 1 ? 'move1' : 'move2' })),
-    ...targets.map((t): TileHighlight => ({ pos: t.pos, kind: 'target' })),
-  ];
+  // Card targeting highlights.
+  const cardHighlights = useMemo((): TileHighlight[] => {
+    if (!card) return [];
+    const ok = (t: CardTarget) => cardError(state, card, t) === null;
+    switch (card.target) {
+      case 'drone':
+        return state.units.filter((u) => u.side === 'drone' && ok({ kind: 'unit', unitId: u.id })).map((u) => ({ pos: u.pos, kind: 'cardTarget' }));
+      case 'door':
+        return state.doors.filter((d) => ok({ kind: 'door', pos: d.pos })).map((d) => ({ pos: d.pos, kind: 'cardTarget' }));
+      case 'zone':
+      case 'room': {
+        if (!hover) return [];
+        const z = state.zoneOf[idx(state, hover)];
+        if (z < 0 || !ok({ kind: 'zone', zone: z })) return [];
+        const out: TileHighlight[] = [];
+        state.zoneOf.forEach((zi, i) => {
+          if (zi === z) out.push({ pos: { x: i % state.width, y: Math.floor(i / state.width) }, kind: 'cardTarget' });
+        });
+        return out;
+      }
+      case 'tile': {
+        if (!hover) return [];
+        const r = card.effects.find((e) => e.kind === 'scan')?.radius ?? 0;
+        const out: TileHighlight[] = [];
+        for (let y = hover.y - r; y <= hover.y + r; y++)
+          for (let x = hover.x - r; x <= hover.x + r; x++) if (Math.hypot(x - hover.x, y - hover.y) <= r) out.push({ pos: { x, y }, kind: 'cardTarget' });
+        return out;
+      }
+    }
+    return [];
+  }, [state, card, hover]);
 
-  const hoverPlan = drone && hover && !game.busy && !hoverUnit ? planMove(state, drone, hover) : null;
+  const highlights: TileHighlight[] = card
+    ? cardHighlights
+    : [
+        ...options.map((o): TileHighlight => ({ pos: o.pos, kind: o.ap === 1 ? 'move1' : 'move2' })),
+        ...targets.map((t): TileHighlight => ({ pos: t.pos, kind: 'target' })),
+      ];
+
+  const hoverPlan = drone && hover && !game.busy && !hoverUnit && !card ? planMove(state, drone, hover) : null;
 
   // Shot preview: the pinned target, else whatever targetable invader is under the mouse.
   const shotTarget = pinnedTarget && targets.includes(pinnedTarget) ? pinnedTarget : hoverUnit && targets.includes(hoverUnit) ? hoverUnit : undefined;
@@ -74,8 +142,36 @@ export function App() {
     void game.dispatch({ type: 'shoot', unitId: drone.id, targetId: target.id });
   };
 
+  const playCard = (uid: number, target: CardTarget) => {
+    setCardUid(null);
+    void game.dispatch({ type: 'playCard', uid, target });
+  };
+
+  const pickCard = (uid: number) => {
+    if (game.busy) return;
+    if (cardUid === uid) {
+      setCardUid(null);
+      return;
+    }
+    const inst = state.deck.hand.find((c) => c.uid === uid);
+    if (!inst) return;
+    const def = CARDS[inst.cardId];
+    setTargetId(null);
+    if (def.target === 'none') {
+      playCard(uid, { kind: 'none' });
+      return;
+    }
+    setCardUid(uid);
+  };
+
   const onTileClick = (p: Vec) => {
     if (game.busy) return;
+    if (card && cardInst) {
+      const t = targetFromTile(state, card.target, p);
+      if (t && cardError(state, card, t) === null) playCard(cardInst.uid, t);
+      else setCardUid(null);
+      return;
+    }
     const clicked = state.units.find((u) => at(u, p));
     if (clicked?.side === 'drone') {
       setSelectedId(clicked.id);
@@ -83,10 +179,8 @@ export function App() {
       return;
     }
     if (clicked?.side === 'invader') {
-      if (targets.includes(clicked)) {
-        if (targetId === clicked.id) fire(clicked);
-        else setTargetId(clicked.id);
-      } else setTargetId(clicked.id);
+      if (targets.includes(clicked) && targetId === clicked.id) fire(clicked);
+      else setTargetId(clicked.id);
       return;
     }
     if (drone && planMove(state, drone, p)) {
@@ -101,11 +195,8 @@ export function App() {
   const endTurn = () => {
     if (game.busy) return;
     setTargetId(null);
+    setCardUid(null);
     void game.dispatch({ type: 'endTurn' });
-  };
-
-  const overwatch = () => {
-    if (drone && !game.busy) void game.dispatch({ type: 'overwatch', unitId: drone.id });
   };
 
   const cycleDrone = () => {
@@ -116,23 +207,58 @@ export function App() {
     setTargetId(null);
   };
 
-  const droneActions: DroneAction[] = drone
-    ? [
-        { label: 'Overwatch', key: 'O', enabled: drone.ap > 0 && !game.busy && droneCan(drone, 'overwatch'), run: overwatch, title: 'Spend remaining AP to react-fire at the first invader that moves into view.' },
-      ]
-    : [];
+  // Context actions for the selected drone.
+  const droneActions: DroneAction[] = [];
+  if (drone) {
+    const ready = drone.ap > 0 && !game.busy;
+    droneActions.push({
+      label: 'Overwatch',
+      key: 'O',
+      enabled: ready && droneCan(drone, 'overwatch'),
+      run: () => void game.dispatch({ type: 'overwatch', unitId: drone.id }),
+      title: 'Spend remaining AP to react-fire at the first invader that moves into view.',
+    });
+    if (droneCan(drone, 'salvage')) {
+      const spot = state.salvage.find((sp) => sp.charges > 0 && withinReach(drone.pos, sp.pos));
+      if (spot)
+        droneActions.push({
+          label: `Salvage (${spot.charges} left)`,
+          key: 'S',
+          enabled: ready,
+          run: () => void game.dispatch({ type: 'salvage', unitId: drone.id, spotId: spot.id }),
+        });
+    }
+    if (droneCan(drone, 'repair')) {
+      const sys = state.systems.find((x) => !x.working && (x.kind === 'generator' || x.kind === 'relay') && withinReach(drone.pos, x.pos));
+      if (sys)
+        droneActions.push({
+          label: `Repair ${sys.name} (◈${repairCost(sys.kind)})`,
+          key: 'R',
+          enabled: ready && state.matter >= repairCost(sys.kind),
+          run: () => void game.dispatch({ type: 'repair', unitId: drone.id, systemId: sys.id }),
+        });
+    }
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'e' || e.key === 'E') endTurn();
+      const k = e.key.toLowerCase();
+      if (k === 'e') endTurn();
       else if (e.key === 'Tab') {
         e.preventDefault();
         cycleDrone();
       } else if (e.key === 'Escape') {
-        if (targetId !== null) setTargetId(null);
+        if (cardUid !== null) setCardUid(null);
+        else if (targetId !== null) setTargetId(null);
         else setSelectedId(null);
-      } else if ((e.key === 'f' || e.key === 'F') && shotTarget && pinnedTarget) fire(shotTarget);
-      else if (e.key === 'o' || e.key === 'O') overwatch();
+      } else if (k === 'f' && shotTarget && pinnedTarget) fire(shotTarget);
+      else if (/^[1-9]$/.test(e.key)) {
+        const inst = state.deck.hand[Number(e.key) - 1];
+        if (inst) pickCard(inst.uid);
+      } else {
+        const action = droneActions.find((a) => a.key?.toLowerCase() === k && a.enabled);
+        if (action) action.run();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -145,18 +271,26 @@ export function App() {
     game.restart(s);
     setSelectedId(null);
     setTargetId(null);
+    setCardUid(null);
   };
 
   const inspect = pinnedTarget?.side === 'invader' ? pinnedTarget : hoverUnit?.side === 'invader' ? hoverUnit : undefined;
+  const hoverError = card && hover ? (() => {
+    const t = targetFromTile(state, card.target, hover);
+    return t ? cardError(state, card, t) : null;
+  })() : null;
 
   return (
     <div className="app">
       <header className="topbar">
         <div className="title">COMMAND DECK · Round {state.round}</div>
-        <div className="res power" title={`Income ${powerIncome(state)} − upkeep ${totalUpkeep(state)}`}>
-          ⚡ {state.power} <span className="sub">power</span>
+        <div className="res power" title="Power refills each turn to income minus drone upkeep.">
+          ⚡ {state.power}{' '}
+          <span className="sub">
+            power · income {powerIncome(state)} − upkeep {totalUpkeep(state)}
+          </span>
         </div>
-        <div className="res matter">
+        <div className="res matter" title="Matter is banked. Salvage and kills add it; fabricating and repairs spend it.">
           ◈ {state.matter} <span className="sub">matter</span>
         </div>
         <div className="spacer" />
@@ -181,10 +315,17 @@ export function App() {
             onTileClick={onTileClick}
             onTileHover={setHover}
             onTileContext={() => {
+              setCardUid(null);
               setTargetId(null);
               setSelectedId(null);
             }}
           />
+          {card && (
+            <div className="card-mode">
+              Playing <b>{card.name}</b>: {card.text} <span className="muted">— click a target (Esc / right-click cancels)</span>
+              {hoverError && <div className="bad">{hoverError}</div>}
+            </div>
+          )}
         </div>
 
         <aside className="side">
@@ -225,6 +366,7 @@ export function App() {
       </main>
 
       <footer className="bottombar">
+        <Hand state={state} selectedUid={cardUid} disabled={game.busy} onPick={pickCard} />
         <div className="spacer" />
         <button className="end-turn" onClick={endTurn} disabled={game.busy}>
           End turn (E)

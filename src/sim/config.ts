@@ -114,6 +114,8 @@ export const CONFIG = {
     scan: { power: 1, radius: 5 },
     disableShot: { power: 1 },
     fieldRepair: { power: 1, matter: 2, heal: 4 },
+    /** Every captured-tech module card. */
+    module: { power: 1 },
   },
 
   /** Starting deck: card id → copies. */
@@ -123,12 +125,12 @@ export const CONFIG = {
     overclock: 2,
     targetingUplink: 2,
     emergencyBulkhead: 1,
-    killTheLights: 1,
+    killTheLights: 0, // enabled with darkness (milestone 5)
     ventSection: 1,
     reroutePower: 2,
     recycle: 1,
-    scan: 1,
-    disableShot: 2,
+    scan: 0, // enabled with darkness (milestone 5)
+    disableShot: 0, // enabled with capture tech (milestone 6)
     fieldRepair: 1,
   } as Record<string, number>,
 

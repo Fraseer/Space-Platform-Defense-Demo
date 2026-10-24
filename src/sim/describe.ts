@@ -1,5 +1,7 @@
 // Human-readable log lines for events. Returns null for events that don't need a line.
 
+import { CARDS } from './content/cards';
+import { MODULES } from './content/modules';
 import type { GameEvent, GameState } from './types';
 
 export interface LogLine {
@@ -38,6 +40,32 @@ export function describeEvent(e: GameEvent, s: GameState): LogLine | null {
       return { text: `${nameOf(s, e.unitId)} on overwatch.`, tone: 'info' };
     case 'matterChanged':
       return e.delta === 0 ? null : { text: `${e.delta > 0 ? '+' : ''}${e.delta} matter (${e.reason}).`, tone: e.delta > 0 ? 'good' : 'info' };
+    case 'cardPlayed':
+      return { text: `Played ${CARDS[e.cardId]?.name ?? e.cardId}.`, tone: 'info' };
+    case 'unitSpawned':
+      return e.unit.side === 'drone' ? { text: `${e.unit.name} fabricated.`, tone: 'good' } : null;
+    case 'apGained':
+      return { text: `${nameOf(s, e.unitId)} +${e.amount} AP.`, tone: 'info' };
+    case 'healed':
+      return { text: `${nameOf(s, e.unitId)} repaired for ${e.amount}.`, tone: 'good' };
+    case 'salvaged':
+      return { text: `${nameOf(s, e.unitId)} salvaged ${e.amount} matter.`, tone: 'good' };
+    case 'systemRepaired': {
+      const sys = s.systems.find((x) => x.id === e.systemId);
+      return { text: `${sys?.name ?? 'System'} repaired.`, tone: 'good' };
+    }
+    case 'doorSealed':
+      return { text: `Bulkhead sealed for ${e.rounds} rounds.`, tone: 'info' };
+    case 'doorUnsealed':
+      return { text: 'A bulkhead reopened.', tone: 'info' };
+    case 'zoneVented':
+      return { text: `${s.zones[e.zone]?.name ?? 'Section'} vented into space.`, tone: 'warn' };
+    case 'zoneDarkened':
+      return { text: `${s.zones[e.zone]?.name ?? 'Section'} goes dark for ${e.rounds} rounds.`, tone: 'info' };
+    case 'scanned':
+      return { text: `Scan pulse: contacts within ${e.radius} tiles revealed.`, tone: 'info' };
+    case 'moduleInstalled':
+      return { text: `${nameOf(s, e.unitId)} installed ${MODULES[e.moduleId]?.name ?? e.moduleId}.`, tone: 'good' };
     case 'brownout':
       return { text: `Brownout: upkeep exceeds income. ${e.unitIds.map((id) => nameOf(s, id)).join(', ')} start with reduced AP.`, tone: 'bad' };
     default:
