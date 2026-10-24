@@ -8,9 +8,10 @@
 //  - Invaders need light: in the dark they see only a few tiles and lose aim.
 
 import { CONFIG } from './config';
+import { INVADERS } from './content/units';
 import { DIRS4, distance, hasLineOfSight, idx, inBounds } from './grid';
 import { stats } from './units';
-import type { GameState, Vec } from './types';
+import type { GameState, InvaderType, Unit, Vec } from './types';
 
 export function isZoneLit(s: GameState, zone: number): boolean {
   const z = s.zones[zone];
@@ -86,7 +87,14 @@ export function invaderAimPenaltyFromDark(s: GameState, from: Vec, to: Vec): num
   return isLit(s, from) && isLit(s, to) ? 0 : CONFIG.combat.invaderDarkPenalty;
 }
 
+/** Can the ship see this unit right now? Drones always; boss units always; others by tile. */
+export function shipSeesUnit(s: GameState, u: Unit, at: Vec = u.pos): boolean {
+  if (u.side === 'drone') return true;
+  if (INVADERS[u.type as InvaderType].alwaysVisible) return true;
+  return shipCanSee(s, at);
+}
+
 /** Ids of invaders the ship can currently see (everything else is a blip). */
 export function seenInvaderIds(s: GameState): Set<number> {
-  return new Set(s.units.filter((u) => u.side === 'invader' && shipCanSee(s, u.pos)).map((u) => u.id));
+  return new Set(s.units.filter((u) => u.side === 'invader' && shipSeesUnit(s, u)).map((u) => u.id));
 }

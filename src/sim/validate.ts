@@ -25,7 +25,28 @@ function readyDrone(s: GameState, unitId: number): Unit | string {
 
 export function validateCommand(s: GameState, cmd: Command): string | null {
   if (s.status !== 'playing') return 'The game is over.';
+  if (s.pendingChoice && cmd.type !== 'chooseModule') return 'Choose a module from the captured tech first.';
   switch (cmd.type) {
+    case 'chooseModule': {
+      if (!s.pendingChoice) return 'There is nothing to choose.';
+      if (cmd.index < 0 || cmd.index >= s.pendingChoice.options.length) return 'No such option.';
+      return null;
+    }
+    case 'pickUp': {
+      const u = readyDrone(s, cmd.unitId);
+      if (typeof u === 'string') return u;
+      if (!droneCan(u, 'haul')) return `${u.name} can't haul. Only Workers can.`;
+      if (u.carrying !== null) return `${u.name} is already hauling a husk.`;
+      const husk = s.husks.find((h) => h.id === cmd.huskId);
+      if (!husk || husk.carriedBy !== null) return 'No husk there.';
+      if (!withinReach(u.pos, husk.pos)) return `${u.name} must stand on or next to the husk.`;
+      return null;
+    }
+    case 'drop': {
+      const u = unitById(s, cmd.unitId);
+      if (!u || u.carrying === null) return 'Nothing to drop.';
+      return null;
+    }
     case 'move': {
       const u = unitById(s, cmd.unitId);
       if (!u || u.side !== 'drone') return 'No such drone.';
@@ -72,6 +93,11 @@ export function validateCommand(s: GameState, cmd: Command): string | null {
       const inst = s.deck.hand.find((c) => c.uid === cmd.uid);
       if (!inst) return 'That card is not in your hand.';
       return cardError(s, CARDS[inst.cardId], cmd.target);
+    }
+    case 'discard': {
+      if (!s.deck.hand.some((c) => c.uid === cmd.uid)) return 'That card is not in your hand.';
+      if (s.discardsLeft <= 0) return 'No discards left this turn.';
+      return null;
     }
     case 'endTurn':
       return null;

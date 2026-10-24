@@ -163,6 +163,8 @@ export interface GameState {
   power: number;
   matter: number;
   deck: Deck;
+  /** Free discards left this turn. */
+  discardsLeft: number;
   bridge: { integrity: number; max: number };
   breaches: Breach[];
   boss: BossState | null;
@@ -190,6 +192,7 @@ export type Command =
   | { type: 'pickUp'; unitId: number; huskId: number }
   | { type: 'drop'; unitId: number }
   | { type: 'playCard'; uid: number; target: CardTarget }
+  | { type: 'discard'; uid: number }
   | { type: 'chooseModule'; index: number }
   | { type: 'endTurn' };
 
@@ -219,6 +222,7 @@ export type GameEvent =
   | { type: 'healed'; unitId: number; amount: number }
   | { type: 'cardPlayed'; cardId: string; uid: number }
   | { type: 'cardsDrawn'; count: number }
+  | { type: 'cardDiscarded'; cardId: string; uid: number }
   | { type: 'powerChanged'; power: number; reason: string }
   | { type: 'matterChanged'; matter: number; delta: number; reason: string }
   | { type: 'brownout'; unitIds: number[] }

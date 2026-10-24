@@ -41,6 +41,8 @@ export function describeEvent(e: GameEvent, s: GameState): LogLine | null {
       return e.auto ? null : { text: `${nameOf(s, e.unitId)} on overwatch.`, tone: 'info' };
     case 'matterChanged':
       return e.delta === 0 ? null : { text: `${e.delta > 0 ? '+' : ''}${e.delta} matter (${e.reason}).`, tone: e.delta > 0 ? 'good' : 'info' };
+    case 'cardDiscarded':
+      return { text: `Scrapped ${CARDS[e.cardId]?.name ?? e.cardId} from hand.`, tone: 'info' };
     case 'cardPlayed':
       return { text: `Played ${CARDS[e.cardId]?.name ?? e.cardId}.`, tone: 'info' };
     case 'unitSpawned':
@@ -83,6 +85,18 @@ export function describeEvent(e: GameEvent, s: GameState): LogLine | null {
     }
     case 'gameOver':
       return { text: e.status === 'won' ? `VICTORY. ${e.outcome}` : `DEFEAT. ${e.outcome}`, tone: e.status === 'won' ? 'good' : 'bad' };
+    case 'disabled':
+      return { text: `${nameOf(s, e.unitId)} disabled — a husk is left behind. Haul it to the fabricator with a Worker.`, tone: 'good' };
+    case 'huskPickedUp':
+      return { text: `${nameOf(s, e.unitId)} is hauling a husk.`, tone: 'info' };
+    case 'huskDropped':
+      return { text: 'A husk was dropped.', tone: 'warn' };
+    case 'huskDelivered':
+      return { text: `Husk delivered to the fabricator. Analysing ${e.from} tech…`, tone: 'good' };
+    case 'moduleChosen':
+      return { text: `${MODULES[e.moduleId]?.name ?? e.moduleId} blueprint added to your hand.`, tone: 'good' };
+    case 'drilled':
+      return { text: `The drill cuts through ${e.tiles.length} tile${e.tiles.length === 1 ? '' : 's'}.`, tone: 'warn' };
     case 'brownout':
       return { text: `Brownout: upkeep exceeds income. ${e.unitIds.map((id) => nameOf(s, id)).join(', ')} start with reduced AP.`, tone: 'bad' };
     default:

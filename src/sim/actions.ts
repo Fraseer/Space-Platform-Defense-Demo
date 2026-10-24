@@ -3,8 +3,10 @@
 import { CONFIG } from './config';
 import { canTarget, resolveShot, triggerOverwatch } from './combat';
 import { gainMatter } from './economy';
+import { CARDS } from './content/cards';
+import { MODULE_POOLS } from './content/modules';
 import { planMove } from './pathfinding';
-import { shipCanSee } from './vision';
+import { shipSeesUnit } from './vision';
 import { unitById } from './units';
 import type { Command, GameEvent, GameState, Unit, Vec } from './types';
 
@@ -23,10 +25,12 @@ export function moveAlong(s: GameState, unit: Unit, path: Vec[], emit: Emit): bo
     segment = [];
     seen = [];
   };
+  const husk = unit.carrying !== null ? s.husks.find((h) => h.id === unit.carrying) : undefined;
   for (const step of path) {
     unit.pos = { ...step };
+    if (husk) husk.pos = { ...step };
     segment.push({ ...step });
-    seen.push(unit.side === 'drone' || shipCanSee(s, step));
+    seen.push(shipSeesUnit(s, unit));
     if (unit.side === 'invader' && s.units.some((u) => u.side === 'drone' && u.overwatch && canTarget(s, u, unit))) {
       flush();
       if (triggerOverwatch(s, unit, emit)) return false;
@@ -42,6 +46,55 @@ export function doMove(s: GameState, cmd: Extract<Command, { type: 'move' }>, em
   u.ap -= plan.ap;
   u.acted = true;
   moveAlong(s, u, plan.path, emit);
+  tryDeliver(s, u, emit);
+}
+
+// ---------------------------------------------------------------------------
+// Capturing tech: a Worker hauls a husk to the fabricator, then you pick a module.
+
+export function doPickUp(s: GameState, cmd: Extract<Command, { type: 'pickUp' }>, emit: Emit): void {
+  const u = unitById(s, cmd.unitId)!;
+  const husk = s.husks.find((h) => h.id === cmd.huskId)!;
+  u.ap -= 1;
+  u.acted = true;
+  u.carrying = husk.id;
+  husk.carriedBy = u.id;
+  husk.pos = { ...u.pos };
+  emit({ type: 'huskPickedUp', unitId: u.id, huskId: husk.id });
+  tryDeliver(s, u, emit);
+}
+
+export function doDrop(s: GameState, cmd: Extract<Command, { type: 'drop' }>, emit: Emit): void {
+  const u = unitById(s, cmd.unitId)!;
+  const husk = s.husks.find((h) => h.id === u.carrying)!;
+  u.carrying = null;
+  husk.carriedBy = null;
+  husk.pos = { ...u.pos };
+  emit({ type: 'huskDropped', huskId: husk.id, pos: { ...husk.pos } });
+}
+
+/** A hauler that reaches the working fabricator hands over its husk: pick a module. */
+export function tryDeliver(s: GameState, u: Unit, emit: Emit): void {
+  if (u.carrying === null) return;
+  const fab = s.systems.find((x) => x.kind === 'fabricator' && x.working);
+  if (!fab || !withinReach(u.pos, fab.pos)) return;
+  const husk = s.husks.find((h) => h.id === u.carrying)!;
+  s.husks = s.husks.filter((h) => h.id !== husk.id);
+  u.carrying = null;
+  s.stats.husksCaptured++;
+  emit({ type: 'huskDelivered', huskId: husk.id, from: husk.type });
+  const options = MODULE_POOLS[husk.type] ?? [];
+  if (options.length > 0) s.pendingChoice = { from: husk.type, options: [...options] };
+}
+
+export function doChooseModule(s: GameState, cmd: Extract<Command, { type: 'chooseModule' }>, emit: Emit): void {
+  const choice = s.pendingChoice!;
+  const moduleId = choice.options[cmd.index];
+  s.pendingChoice = null;
+  const cardId = `module:${moduleId}`;
+  if (!CARDS[cardId]) return;
+  s.deck.hand.push({ uid: s.nextId++, cardId });
+  emit({ type: 'moduleChosen', moduleId });
 }
 
 export function doShoot(s: GameState, cmd: Extract<Command, { type: 'shoot' }>, emit: Emit): void {

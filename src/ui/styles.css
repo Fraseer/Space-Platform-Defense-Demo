@@ -173,3 +173,13 @@ button.on { border-color: var(--drone); color: var(--drone); }
 
 .blip-pulse { fill: rgba(255, 138, 42, 0.12); stroke: #ff8a2a; stroke-width: 1.2; animation: blip 1.6s ease-out infinite; transform-origin: center; transform-box: fill-box; }
 @keyframes blip { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.35); opacity: 0.15; } }
+
+.boss { display: flex; flex-direction: column; gap: 4px; }
+.boss-row { display: grid; grid-template-columns: 110px 1fr 50px; gap: 8px; align-items: center; color: #ff7ad9; font-weight: 700; }
+.small-bar { height: 8px; background: #1b222b; border: 1px solid #2c3946; border-radius: 3px; overflow: hidden; }
+.boss-fill { height: 100%; background: #ff7ad9; }
+.good { color: var(--good); }
+.go-box.choice { border-color: #c3a5ff; max-width: 560px; }
+.go-box.choice h2 { color: #c3a5ff; }
+.choices { display: flex; gap: 10px; margin-top: 10px; }
+.choices .card { height: 140px; }

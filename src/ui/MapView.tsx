@@ -28,6 +28,8 @@ interface Props {
   /** Debug: draw blips as the units they are. */
   reveal: boolean;
   intents?: Intent[];
+  /** Tiles the boss drill has yet to cut. */
+  tunnel?: Vec[];
   rings?: { center: Vec; radius: number; kind: 'optimal' | 'max' | 'sensor' | 'overwatch' }[];
   scores?: TileScore[];
 }
@@ -95,7 +97,8 @@ const StaticTiles = memo(function StaticTiles({ state, sight }: { state: GameSta
         continue;
       }
       const v = sight[i];
-      const floor = v === 2 ? (zone?.kind === 'bridge' ? C.floorBridge : C.floorLit) : v === 1 ? C.floorSensed : C.floorDark;
+      let floor = v === 2 ? (zone?.kind === 'bridge' ? C.floorBridge : C.floorLit) : v === 1 ? C.floorSensed : C.floorDark;
+      if (zone?.kind === 'tunnel') floor = v === 0 ? '#140d08' : '#2a1b10';
       out.push(<rect key={i} x={px} y={py} width={TILE} height={TILE} fill={floor} stroke={v === 0 ? '#0b0e12' : '#0c1015'} strokeWidth={0.5} />);
       const dim = v === 0 ? 0.45 : 1;
       if (t === 'half') out.push(<rect key={`c${i}`} x={px + 5} y={py + 9} width={TILE - 10} height={TILE - 18} rx={2} fill={C.half} opacity={dim} />);
@@ -226,6 +229,7 @@ function UnitShape({ u, selected, targeted, reveal }: { u: DisplayUnit; selected
       {u.overwatch && <path d="M-11,9 Q0,15 11,9" fill="none" stroke="#e8fbff" strokeWidth={1.6} />}
       {shape}
       <g>{pips}</g>
+      {u.carrying && <rect x={-13} y={4} width={8} height={8} fill="#2a1c12" stroke="#ff8a2a" strokeWidth={1.4} />}
       {u.side === 'drone' && u.kills > 0 && (
         <text x={10} y={13} fontSize={8} fontWeight={700} fill="#e8fbff">
           {u.kills}
@@ -322,6 +326,25 @@ export function MapView(p: Props) {
         </g>
       )}
       {p.intents && <IntentLayer state={state} intents={p.intents} />}
+      {p.tunnel && p.tunnel.length > 0 && (
+        <g pointerEvents="none">
+          {p.tunnel.map((q, i) => (
+            <rect key={i} x={q.x * TILE + 9} y={q.y * TILE + 9} width={TILE - 18} height={TILE - 18} fill="none" stroke="#ff5d5d" strokeWidth={1.2} opacity={0.8} />
+          ))}
+        </g>
+      )}
+      <g pointerEvents="none">
+        {state.husks
+          .filter((h) => h.carriedBy === null)
+          .map((h) => (
+            <g key={h.id} transform={`translate(${center(h.pos).x},${center(h.pos).y})`}>
+              <rect x={-7} y={-7} width={14} height={14} fill="#2a1c12" stroke="#ff8a2a" strokeWidth={1.5} strokeDasharray="3 2" />
+              <text y={4} textAnchor="middle" fontSize={9} fontWeight={700} fill="#ff9d4d">
+                H
+              </text>
+            </g>
+          ))}
+      </g>
       {p.scores && (
         <g pointerEvents="none">
           {(() => {

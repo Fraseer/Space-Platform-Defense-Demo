@@ -16,6 +16,7 @@ npm run typecheck  # app + sim (no DOM) + node configs
 npm run lint       # ESLint, including the sim import rule
 npm run check      # typecheck + lint + test — run before every commit
 npm run build      # typecheck, then static site in dist/
+npm run balance    # greedy bot over 40 seeds: win rate + run length (tools/)
 ```
 
 The seed comes from `?seed=` (numbers are used as-is, other text is hashed). If
@@ -58,12 +59,19 @@ src/sim/            pure simulation
   pathfinding.ts    move ranges (BFS) and invader goal fields (Dijkstra)
   actions.ts        drone actions, movement
   turn.ts           end turn → enemy phase → next round
-  ai.ts             enemy turn
+  combat.ts         hit chance breakdown, cover/flank, grazes, overwatch
+  vision.ts         lighting zones, ship sight, blips, invader vision
+  effects.ts        card targeting + the effect interpreter
+  ai.ts             enemy turn: tile scoring, intents
+  director.ts       breach schedule, spawns
+  boss.ts           Siege Breacher, drill tunnel, Drill Rig
   economy.ts        power, upkeep, matter, deck draws
   units.ts          unit creation, derived stats (config + modules)
   describe.ts       event → log line
-  content/          map (ASCII), drones/invaders, modules
+  debug.ts          playtest shortcuts (skip to boss)
+  content/          map (ASCII), cards, drones/invaders, modules
 src/ui/             React: renders state, plays back events
+tools/              balance bot (`npm run balance`)
 ```
 
 ## Map
@@ -72,6 +80,19 @@ src/ui/             React: renders state, plays back events
 rectangles (rooms/corridors used for lighting) and relay definitions. The map
 test checks every floor tile is in a zone and every airlock can reach the
 bridge. Movement is 4-directional.
+
+## Rules worth knowing before changing code
+
+- A round is the player's turn then the enemy phase (`turn.ts`): auto-overwatch
+  → enemy phase (boss first) → bridge override → timers → director (spawns
+  breaches due next round, announces warnings) → next round (power refill,
+  brownout, AP reset, draw).
+- The AI never rolls dice; only shots do. `planIntents` re-runs the same
+  decisions on a copy of the state for the tactical overlay. Invaders only plan
+  around drones they can see from where they start their turn.
+- Fog of war is a sim rule: `shipSeesUnit` / `seenInvaderIds` decide what is a
+  blip; move events carry per-step `seen` flags so the UI never leaks.
+- Boss units (`alwaysVisible`) are never blips; the drill route is always shown.
 
 ## Workflow
 

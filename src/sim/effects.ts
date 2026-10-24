@@ -188,3 +188,12 @@ function applyEffect(s: GameState, e: Effect, t: CardTarget, emit: Emit): void {
     }
   }
 }
+
+/** Scraps a card from the hand to the discard pile (limited per turn). */
+export function discardCard(s: GameState, uid: number, emit: Emit): void {
+  const i = s.deck.hand.findIndex((c) => c.uid === uid);
+  const [inst] = s.deck.hand.splice(i, 1);
+  s.deck.discard.push(inst);
+  s.discardsLeft--;
+  emit({ type: 'cardDiscarded', cardId: inst.cardId, uid });
+}

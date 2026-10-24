@@ -91,9 +91,6 @@ function systemFor(ch: string, map: MapDef): { kind: SystemKind; name: string; l
   return { kind: 'relay', name: relay.name, lights: relay.lights };
 }
 
-/** The Siege Breacher arrives in milestone 6; until then surviving breach 3 wins. */
-const INCLUDE_BOSS = false;
-
 function buildBreaches(s: GameState): Breach[] {
   const ids = s.airlocks.map((a) => a.id);
   const order = rngShuffle(s, ids);
@@ -108,7 +105,6 @@ function buildBreaches(s: GameState): Breach[] {
     boss: false,
   }));
   const boss = CONFIG.act1.boss;
-  if (!INCLUDE_BOSS) return breaches;
   breaches.push({
     index: breaches.length,
     airlock: ids[rngInt(s, ids.length)],
@@ -136,6 +132,7 @@ export function newGame(seed: number, map: MapDef = COMMAND_DECK): GameState {
     power: 0,
     matter: CONFIG.matter.start,
     deck: { draw: [], hand: [], discard: [], exhausted: [] },
+    discardsLeft: CONFIG.turn.discardsPerTurn,
     bridge: { integrity: CONFIG.bridge.integrity, max: CONFIG.bridge.integrity },
     breaches: [],
     boss: null,

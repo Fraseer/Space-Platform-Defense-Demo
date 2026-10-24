@@ -7,6 +7,7 @@ import { brownoutDrones, drawUpTo, refillPower } from './economy';
 import { drones, invaders } from './units';
 import { idx } from './grid';
 import { runDirector } from './director';
+import { bossUnits, spawnBoss } from './boss';
 import type { InvaderType } from './types';
 import { droneCan } from './validate';
 import type { GameState } from './types';
@@ -24,7 +25,7 @@ export function endTurn(s: GameState, emit: Emit): void {
   bridgeOverride(s, emit);
   if (s.status !== 'playing') return;
   tickTimers(s, emit);
-  runDirector(s, emit, () => {});
+  runDirector(s, emit, spawnBoss);
   startRound(s, emit);
 }
 
@@ -47,10 +48,31 @@ export function endGame(s: GameState, status: 'won' | 'lost', outcome: string, e
   emit({ type: 'gameOver', status, outcome });
 }
 
-/** Milestone 4 victory: every breach has arrived and no invader is left alive. */
+/**
+ * Victory: with a boss, kill or disable the Siege Breacher, or destroy its
+ * Drill Rig. Without one (tests, or an act with no boss), clear every breach.
+ */
 export function checkVictory(s: GameState, emit: Emit): void {
   if (s.status !== 'playing') return;
-  if (s.breaches.length > 0 && s.breaches.every((b) => b.arrived) && invaders(s).length === 0) {
+  if (s.boss) {
+    const { breacher, rig } = bossUnits(s);
+    if (!breacher) {
+      const captured = s.husks.some((h) => h.type === 'breacher');
+      endGame(
+        s,
+        'won',
+        captured
+          ? 'The Siege Breacher is disabled. Its Plasma Cutter is yours to study: drones that cut through walls.'
+          : 'The Siege Breacher is destroyed. The command deck holds.',
+        emit,
+      );
+    } else if (!rig) {
+      endGame(s, 'won', 'The Drill Rig is destroyed and the drill grinds to a halt. The boarding vessel cuts its losses and undocks.', emit);
+    }
+    return;
+  }
+  const hasBoss = s.breaches.some((b) => b.boss);
+  if (!hasBoss && s.breaches.length > 0 && s.breaches.every((b) => b.arrived) && invaders(s).length === 0) {
     endGame(s, 'won', 'Every breach repelled. The command deck is secure.', emit);
   }
 }
@@ -82,6 +104,7 @@ export function startRound(s: GameState, emit: Emit): void {
   if (browned.size > 0) emit({ type: 'brownout', unitIds: [...browned] });
   emit({ type: 'powerChanged', power: s.power, reason: 'refill' });
 
+  s.discardsLeft = CONFIG.turn.discardsPerTurn;
   if (!CONFIG.turn.retainHand) {
     s.deck.discard.push(...s.deck.hand);
     s.deck.hand = [];

@@ -23,6 +23,7 @@ export interface DisplayUnit {
   seen: boolean;
   overwatch: boolean;
   kills: number;
+  carrying: boolean;
 }
 
 export type Fx =
@@ -36,7 +37,7 @@ export interface Playback {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function toDisplay(u: Unit, seen = true): DisplayUnit {
-  return { id: u.id, side: u.side, type: u.type, name: u.name, pos: { ...u.pos }, hp: u.hp, maxHp: u.maxHp, seen, overwatch: u.overwatch, kills: u.kills };
+  return { id: u.id, side: u.side, type: u.type, name: u.name, pos: { ...u.pos }, hp: u.hp, maxHp: u.maxHp, seen, overwatch: u.overwatch, kills: u.kills, carrying: u.carrying !== null };
 }
 
 let logId = 1;
@@ -163,6 +164,23 @@ export function useGame(seed: number) {
             await wait(250);
             break;
           }
+          case 'huskPickedUp': {
+            const u = model.get(e.unitId);
+            if (u) u.carrying = true;
+            render();
+            break;
+          }
+          case 'huskDelivered': {
+            const fab = names.systems.find((x) => x.kind === 'fabricator');
+            for (const u of model.values()) u.carrying = u.carrying && !(fab && Math.max(Math.abs(u.pos.x - fab.pos.x), Math.abs(u.pos.y - fab.pos.y)) <= 1);
+            if (fab) addFx({ id: fxId++, kind: 'float', at: fab.pos, text: 'TECH', tone: 'heal' }, 1200);
+            render();
+            await wait(250);
+            break;
+          }
+          case 'drilled':
+            await wait(200);
+            break;
           case 'systemRepaired': {
             const sys = names.systems.find((x) => x.id === e.systemId);
             if (sys) addFx({ id: fxId++, kind: 'float', at: sys.pos, text: 'ONLINE', tone: 'heal' }, 1000);
@@ -207,5 +225,14 @@ export function useGame(seed: number) {
     [],
   );
 
-  return { state, log, playback, fx, busy: playback !== null, dispatch, restart, fast };
+  /** Debug tools only: replace the state wholesale. */
+  const debugReplace = useCallback(
+    (s: GameState, note: string) => {
+      setState(s);
+      pushLog([{ id: logId++, text: `[debug] ${note}`, tone: 'warn' }]);
+    },
+    [pushLog],
+  );
+
+  return { state, log, playback, fx, busy: playback !== null, dispatch, restart, fast, debugReplace };
 }

@@ -6,7 +6,7 @@ import { DIRS4, coverOf, distance, hasLineOfSight } from './grid';
 import { gainMatter } from './economy';
 import { rngRoll } from './rng';
 import { hasModule, stats, unitById } from './units';
-import { invaderAimPenaltyFromDark, invaderCanSee, shipCanSee } from './vision';
+import { invaderAimPenaltyFromDark, invaderCanSee, shipSeesUnit } from './vision';
 import type { Emit } from './actions';
 import type { GameState, InvaderType, ShotInfo, Unit, Vec } from './types';
 
@@ -51,7 +51,7 @@ export function canTarget(s: GameState, shooter: Unit, target: Unit, from: Vec =
   if (st.maxRange <= 0) return false;
   if (distance(from, target.pos) > st.maxRange) return false;
   if (!hasLineOfSight(s, from, target.pos)) return false;
-  if (shooter.side === 'drone') return shipCanSee(s, target.pos);
+  if (shooter.side === 'drone') return shipSeesUnit(s, target);
   return invaderCanSee(s, from, target.pos);
 }
 
@@ -98,7 +98,7 @@ export function resolveShot(s: GameState, shooter: Unit, target: Unit, opts: { o
     from: { ...shooter.pos },
     to: { ...target.pos },
     info,
-    shooterSeen: shooter.side === 'drone' || shipCanSee(s, shooter.pos),
+    shooterSeen: shipSeesUnit(s, shooter),
   });
   const disable = shooter.disableNext;
   shooter.aimBonus = 0;

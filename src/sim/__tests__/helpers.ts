@@ -31,6 +31,7 @@ export function testState(rows: string[], extra: Partial<MapDef> = {}): GameStat
     power: 5,
     matter: 10,
     deck: { draw: [], hand: [], discard: [], exhausted: [] },
+    discardsLeft: 1,
     bridge: { integrity: 20, max: 20 },
     breaches: [],
     boss: null,

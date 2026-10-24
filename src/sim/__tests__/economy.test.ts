@@ -71,6 +71,18 @@ describe('deck', () => {
   });
 });
 
+describe('discarding', () => {
+  it('allows one free scrap per turn, refreshed each round', () => {
+    const s = newGame(2);
+    const [a, b] = s.deck.hand.map((c) => c.uid);
+    const once = run(s, { type: 'discard', uid: a });
+    expect(once.deck.discard.map((c) => c.uid)).toContain(a);
+    expect(applyCommand(once, { type: 'discard', uid: b }).ok).toBe(false);
+    const nextRound = run(once, { type: 'endTurn' });
+    expect(nextRound.discardsLeft).toBe(CONFIG.turn.discardsPerTurn);
+  });
+});
+
 describe('cards', () => {
   it('Overclock spends power and gives +1 AP', () => {
     const s = newGame(1);

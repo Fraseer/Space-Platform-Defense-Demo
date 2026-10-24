@@ -1,7 +1,7 @@
 // Side-panel widgets. Read-only views of state; actions go through callbacks.
 
 import { useEffect, useState } from 'react';
-import { CONFIG, DRONES, INVADERS, airlockName, stats, type GameState, type InvaderType, type ShotPreview, type Unit } from '../sim';
+import { CONFIG, DRONES, INVADERS, MODULES, airlockName, bossUnits, remainingTunnel, stats, type GameState, type InvaderType, type ShotPreview, type Unit } from '../sim';
 
 import type { LogEntry } from './useGame';
 
@@ -188,6 +188,60 @@ export function GameOver({ state, onNewRun, onRetry }: { state: GameState; onNew
         <div className="actions">
           <button onClick={onRetry}>Retry this seed</button>
           <button onClick={onNewRun}>New run</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BossPanel({ state }: { state: GameState }) {
+  if (!state.boss) return null;
+  const { breacher, rig } = bossUnits(state);
+  const left = remainingTunnel(state).length;
+  const bar = (u: Unit | undefined) =>
+    u ? (
+      <div className="bar small-bar">
+        <div className="fill boss-fill" style={{ width: `${(u.hp / u.maxHp) * 100}%` }} />
+      </div>
+    ) : (
+      <span className="good">down</span>
+    );
+  return (
+    <div className="boss">
+      <div className="boss-row">
+        <span>Siege Breacher</span>
+        {bar(breacher)}
+        <span>{breacher ? `${breacher.hp}/${breacher.maxHp}` : ''}</span>
+      </div>
+      <div className="boss-row">
+        <span>Drill Rig</span>
+        {bar(rig)}
+        <span>{rig ? `${rig.hp}/${rig.maxHp}` : ''}</span>
+      </div>
+      <div className={left <= CONFIG.boss.drillSpeed ? 'bad' : 'muted'}>
+        {left > 0 ? `Drill: ${left} tile${left === 1 ? '' : 's'} to the bridge (${CONFIG.boss.drillSpeed}/turn).` : 'The drill has reached the bridge!'}
+      </div>
+      <div className="muted small">Win by killing or disabling the Breacher, or destroying the Rig at the airlock.</div>
+    </div>
+  );
+}
+
+export function ModuleChoice({ state, onChoose }: { state: GameState; onChoose: (i: number) => void }) {
+  const choice = state.pendingChoice;
+  if (!choice) return null;
+  return (
+    <div className="gameover">
+      <div className="go-box choice">
+        <h2>CAPTURED TECH</h2>
+        <p>The fabricator has stripped the {INVADERS[choice.from].name} husk. Pick one blueprint; it goes into your hand as a module card.</p>
+        <div className="choices">
+          {choice.options.map((id, i) => (
+            <button key={id} className="card card-module" onClick={() => onChoose(i)}>
+              <div className="card-name">{MODULES[id].name}</div>
+              <div className="card-type">module · from {INVADERS[MODULES[id].from].name}</div>
+              <div className="card-text">{MODULES[id].text}</div>
+            </button>
+          ))}
         </div>
       </div>
     </div>

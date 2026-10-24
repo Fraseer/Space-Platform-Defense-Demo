@@ -6,6 +6,7 @@
 // intent overlay shows exactly what an invader will do if nothing changes.
 
 import { CONFIG } from './config';
+import { runBoss } from './boss';
 import { moveAlong, withinReach, type Emit } from './actions';
 import { canTarget, coverAgainst, previewShot, resolveShot } from './combat';
 import { INVADERS } from './content/units';
@@ -13,7 +14,7 @@ import { distance, hasLineOfSight, idx, posOf } from './grid';
 import { apForSteps, goalField, moveField, pathFromField } from './pathfinding';
 import { clone } from './util';
 import { drones, invaders, stats, unitById } from './units';
-import { invaderCanSee, shipCanSee } from './vision';
+import { invaderCanSee, shipSeesUnit } from './vision';
 import type { GameState, InvaderType, SystemObj, Unit, Vec } from './types';
 
 export type IntentAction = { kind: 'shoot'; targetId: number } | { kind: 'sabotage'; systemId: number };
@@ -194,7 +195,7 @@ function isMobileInvader(u: Unit): boolean {
 function sabotage(s: GameState, u: Unit, sys: SystemObj, emit: Emit): void {
   sys.working = false;
   sys.repaired = false;
-  emit({ type: 'systemSabotaged', systemId: sys.id, byId: u.id, seen: shipCanSee(s, u.pos) });
+  emit({ type: 'systemSabotaged', systemId: sys.id, byId: u.id, seen: shipSeesUnit(s, u) });
 }
 
 function bestShot(s: GameState, u: Unit): Unit | null {
@@ -239,6 +240,8 @@ function actInvader(s: GameState, u: Unit, emit: Emit): void {
 }
 
 export function runEnemyPhase(s: GameState, emit: Emit): void {
+  runBoss(s, emit);
+  if (s.status !== 'playing') return;
   for (const id of invaders(s).map((u) => u.id)) {
     const u = unitById(s, id);
     if (!u || !isMobileInvader(u)) continue;

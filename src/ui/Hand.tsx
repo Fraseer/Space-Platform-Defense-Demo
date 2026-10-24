@@ -7,9 +7,10 @@ interface Props {
   selectedUid: number | null;
   disabled: boolean;
   onPick: (uid: number) => void;
+  onDiscard: (uid: number) => void;
 }
 
-export function Hand({ state, selectedUid, disabled, onPick }: Props) {
+export function Hand({ state, selectedUid, disabled, onPick, onDiscard }: Props) {
   return (
     <div className="hand">
       {state.deck.hand.map((inst) => {
@@ -21,7 +22,11 @@ export function Hand({ state, selectedUid, disabled, onPick }: Props) {
             className={`card card-${card.type} ${selectedUid === inst.uid ? 'sel' : ''} ${affordable ? '' : 'poor'}`}
             disabled={disabled}
             onClick={() => onPick(inst.uid)}
-            title={card.text}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              if (!disabled) onDiscard(inst.uid);
+            }}
+            title={`${card.text}\nRight-click to scrap (${state.discardsLeft} left this turn).`}
           >
             <div className="card-cost">
               <span className="c-power">⚡{card.cost.power}</span>
@@ -37,6 +42,7 @@ export function Hand({ state, selectedUid, disabled, onPick }: Props) {
         <div>Draw {state.deck.draw.length}</div>
         <div>Discard {state.deck.discard.length}</div>
         {state.deck.exhausted.length > 0 && <div>Exhausted {state.deck.exhausted.length}</div>}
+        <div title="Right-click a card to scrap it into the discard pile.">Scrap {state.discardsLeft} (right-click)</div>
       </div>
     </div>
   );

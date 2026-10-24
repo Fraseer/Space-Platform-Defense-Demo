@@ -4,7 +4,7 @@
 
 import { DIRS4, idx, inBounds, isWalkable } from './grid';
 import { createInvader } from './units';
-import { shipCanSee } from './vision';
+import { shipSeesUnit } from './vision';
 import type { Emit } from './actions';
 import type { Breach, GameState, InvaderType, Vec } from './types';
 
@@ -46,7 +46,7 @@ export function spawnBreach(s: GameState, b: Breach, types: InvaderType[], emit:
     const u = createInvader(s, type, pos);
     s.units.push(u);
     ids.push(u.id);
-    emit({ type: 'unitSpawned', unit: { ...u, pos: { ...u.pos } }, seen: shipCanSee(s, u.pos) });
+    emit({ type: 'unitSpawned', unit: { ...u, pos: { ...u.pos } }, seen: shipSeesUnit(s, u) });
   });
   return ids;
 }

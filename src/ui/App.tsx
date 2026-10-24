@@ -13,10 +13,12 @@ import {
   planMove,
   scoreTilesFor,
   seenInvaderIds,
+  skipToBoss,
   sightMap,
   stats,
   powerIncome,
   previewShot,
+  remainingTunnel,
   repairCost,
   seedFrom,
   totalUpkeep,
@@ -29,7 +31,7 @@ import {
 } from '../sim';
 import { Hand } from './Hand';
 import { MapView, type TileHighlight } from './MapView';
-import { BreachPanel, BridgeBar, DronePanel, GameOver, InvaderInfo, LogList, Roster, ShotPanel, type DroneAction } from './panels';
+import { BossPanel, BreachPanel, BridgeBar, DronePanel, GameOver, InvaderInfo, LogList, ModuleChoice, Roster, ShotPanel, type DroneAction } from './panels';
 import { toDisplay, useGame } from './useGame';
 
 function readSeed(): number {
@@ -255,6 +257,26 @@ export function App() {
           run: () => void game.dispatch({ type: 'salvage', unitId: drone.id, spotId: spot.id }),
         });
     }
+    if (droneCan(drone, 'haul')) {
+      if (drone.carrying !== null) {
+        droneActions.push({
+          label: 'Drop husk',
+          enabled: !game.busy,
+          run: () => void game.dispatch({ type: 'drop', unitId: drone.id }),
+          title: 'Hauling slows the Worker. Reach the fabricator to deliver automatically.',
+        });
+      } else {
+        const husk = state.husks.find((h) => h.carriedBy === null && withinReach(drone.pos, h.pos));
+        if (husk)
+          droneActions.push({
+            label: 'Pick up husk',
+            key: 'H',
+            enabled: ready,
+            run: () => void game.dispatch({ type: 'pickUp', unitId: drone.id, huskId: husk.id }),
+            title: 'Haul it to the fabricator to choose a module from its tech.',
+          });
+      }
+    }
     if (droneCan(drone, 'repair')) {
       const sys = state.systems.find((x) => !x.working && (x.kind === 'generator' || x.kind === 'relay') && withinReach(drone.pos, x.pos));
       if (sys)
@@ -331,6 +353,11 @@ export function App() {
           <button className={debug ? 'on' : ''} onClick={() => setDebug((v) => !v)} title="Reveal every invader; show AI tile scores for the invader under the mouse">
             Debug (D)
           </button>
+          {debug && !state.boss && (
+            <button onClick={() => game.debugReplace(skipToBoss(state), 'Skipped to the boss (regular invaders removed).')} disabled={game.busy}>
+              Skip to boss
+            </button>
+          )}
         </div>
         <div className="seed">
           seed {seed}
@@ -358,6 +385,7 @@ export function App() {
               setSelectedId(null);
             }}
             intents={intents}
+            tunnel={!game.busy ? remainingTunnel(state) : undefined}
             rings={rings}
             scores={scores}
             sight={sight}
@@ -376,6 +404,12 @@ export function App() {
             <h3>Breach countdown</h3>
             <BreachPanel state={state} />
           </section>
+          {state.boss && (
+            <section className="panel">
+              <h3>Boss</h3>
+              <BossPanel state={state} />
+            </section>
+          )}
           <section className="panel">
             <h3>Drone</h3>
             <DronePanel drone={drone} actions={droneActions} />
@@ -417,12 +451,22 @@ export function App() {
       </main>
 
       <footer className="bottombar">
-        <Hand state={state} selectedUid={cardUid} disabled={game.busy} onPick={pickCard} />
+        <Hand
+          state={state}
+          selectedUid={cardUid}
+          disabled={game.busy}
+          onPick={pickCard}
+          onDiscard={(uid) => {
+            if (cardUid === uid) setCardUid(null);
+            void game.dispatch({ type: 'discard', uid });
+          }}
+        />
         <div className="spacer" />
         <button className="end-turn" onClick={endTurn} disabled={game.busy}>
           End turn (E)
         </button>
       </footer>
+      {!game.busy && <ModuleChoice state={state} onChoose={(i) => void game.dispatch({ type: 'chooseModule', index: i })} />}
       <GameOver state={state} onNewRun={newRun} onRetry={() => restartWith(seed)} />
     </div>
   );

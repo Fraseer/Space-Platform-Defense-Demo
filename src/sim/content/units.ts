@@ -36,12 +36,14 @@ export interface InvaderDef {
   blurb: string;
   /** Immune to Vent Section. */
   anchored?: boolean;
+  /** Too big and loud to hide: never a blip. */
+  alwaysVisible?: boolean;
 }
 
 export const INVADERS: Record<InvaderType, InvaderDef> = {
   runner: { name: 'Runner', goal: 'bridge', blurb: 'Fast and fragile. Beelines for the bridge.' },
   brute: { name: 'Brute', goal: 'hunt', blurb: 'Tank. Hunts drones it can see.' },
   saboteur: { name: 'Saboteur', goal: 'sabotage', blurb: 'Breaks systems you have repaired.' },
-  breacher: { name: 'Siege Breacher', goal: 'drill', blurb: 'Boss. Drills a tunnel straight at the bridge.', anchored: true },
-  rig: { name: 'Drill Rig', goal: 'none', blurb: 'Powers the Breacher\'s drill. Destroy it to stop the drill.', anchored: true },
+  breacher: { name: 'Siege Breacher', goal: 'drill', blurb: 'Boss. Drills a tunnel straight at the bridge. Kill or disable it to win.', anchored: true, alwaysVisible: true },
+  rig: { name: 'Drill Rig', goal: 'none', blurb: "Anchored at the airlock, powering the Breacher's drill. Destroy it to stop the drill and win.", anchored: true, alwaysVisible: true },
 };

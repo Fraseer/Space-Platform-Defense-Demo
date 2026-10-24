@@ -9,21 +9,23 @@ export const CONFIG = {
     retainHand: true,
     /** AP a freshly fabricated drone gets on the turn it is built. */
     fabricatedAp: 1,
+    /** Cards you may scrap from your hand each turn for free (stops dead cards clogging a kept hand). */
+    discardsPerTurn: 1,
   },
 
   power: {
-    baseIncome: 5,
+    baseIncome: 6,
     generatorBonus: 2,
     /** If upkeep exceeds income, the newest drones start the turn with this many AP. */
     brownoutAp: 1,
   },
 
   matter: {
-    start: 6,
+    start: 10,
   },
 
   bridge: {
-    integrity: 20,
+    integrity: 24,
   },
 
   combat: {
@@ -57,13 +59,13 @@ export const CONFIG = {
   invaders: {
     runner: { hp: 4, move: 5, aim: 55, damage: 2, optimalRange: 4, maxRange: 7, matterDrop: 2, override: 2 },
     brute: { hp: 12, move: 3, aim: 65, damage: 4, optimalRange: 4, maxRange: 7, matterDrop: 4, override: 1 },
-    saboteur: { hp: 6, move: 4, aim: 60, damage: 3, optimalRange: 5, maxRange: 8, matterDrop: 3, override: 2 },
-    breacher: { hp: 30, move: 0, aim: 60, damage: 5, optimalRange: 4, maxRange: 6, matterDrop: 0, override: 5 },
+    saboteur: { hp: 6, move: 4, aim: 60, damage: 3, optimalRange: 5, maxRange: 8, matterDrop: 3, override: 1 },
+    breacher: { hp: 36, move: 0, aim: 60, damage: 5, optimalRange: 4, maxRange: 6, matterDrop: 0, override: 5 },
     rig: { hp: 14, move: 0, aim: 0, damage: 0, optimalRange: 0, maxRange: 0, matterDrop: 0, override: 0 },
   },
 
   worker: {
-    salvageYield: 3,
+    salvageYield: 4,
     salvageCharges: 2,
     repairCost: { generator: 6, relay: 4 } as Record<string, number>,
     /** Movement lost while hauling a husk. */
@@ -91,7 +93,7 @@ export const CONFIG = {
       { warnRound: 5, arriveRound: 8, units: ['brute', 'saboteur', 'runner'] },
       { warnRound: 9, arriveRound: 12, units: ['brute', 'brute', 'saboteur', 'runner', 'runner'] },
     ],
-    boss: { warnRound: 13, arriveRound: 17, escorts: ['runner', 'runner'] },
+    boss: { warnRound: 13, arriveRound: 17, escorts: ['brute', 'runner', 'runner'] },
   },
 
   boss: {
@@ -120,7 +122,7 @@ export const CONFIG = {
 
   /** Starting deck: card id → copies. */
   startingDeck: {
-    fabricateSentry: 1,
+    fabricateSentry: 2,
     fabricateWorker: 1,
     overclock: 2,
     targetingUplink: 2,
@@ -130,7 +132,7 @@ export const CONFIG = {
     reroutePower: 2,
     recycle: 1,
     scan: 1,
-    disableShot: 0, // enabled with capture tech (milestone 6)
+    disableShot: 2,
     fieldRepair: 1,
   } as Record<string, number>,
 

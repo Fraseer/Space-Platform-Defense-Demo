@@ -21,3 +21,6 @@ export { repairCost, withinReach } from './actions';
 export { planIntents, scoreTilesFor, type Intent, type TileScore } from './ai';
 export { airlockName } from './director';
 export { isLit, litMap, sightMap, seenInvaderIds, shipCanSee } from './vision';
+export { bossUnits, remainingTunnel } from './boss';
+export { MODULES, MODULE_POOLS } from './content/modules';
+export { skipToBoss } from './debug';
