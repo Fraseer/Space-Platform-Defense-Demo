@@ -5,6 +5,9 @@ command deck, from wake-up to the act 1 boss. It exists to test whether the
 core loop is fun before building the real game in Godot. The full design is
 in [DESIGN.md](DESIGN.md); developer notes are in [CLAUDE.md](CLAUDE.md).
 
+**Play online:** https://fraseer.github.io/Space-Platform-Defense-Demo/ (rebuilt
+on every push by `.github/workflows/deploy-pages.yml`).
+
 ```bash
 npm install
 npm run dev     # http://localhost:5173/?seed=123

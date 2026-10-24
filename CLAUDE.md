@@ -108,4 +108,8 @@ gates staggered, and every invader at least 3 turns from the bridge.
 ## Workflow
 
 - Work on the branch you were given; commit each milestone and push.
+- Every push to it (or `main`) runs `.github/workflows/deploy-pages.yml`:
+  `npm ci`, `npm run check`, `npm run build`, then publishes `dist/` to
+  https://fraseer.github.io/Space-Platform-Defense-Demo/. The build uses a
+  relative base (`base: './'` in vite.config.ts) so it works under that sub-path.
 - Run `npm run check` before committing.
