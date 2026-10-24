@@ -13,3 +13,5 @@ export { powerIncome, totalUpkeep } from './economy';
 export { describeEvent } from './describe';
 export { COMMAND_DECK } from './content/map';
 export { DRONES, INVADERS } from './content/units';
+export { canTarget, previewShot, coverAgainst, type ShotPreview } from './combat';
+export { droneCan } from './validate';

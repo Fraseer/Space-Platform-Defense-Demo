@@ -21,6 +21,8 @@ export interface DisplayUnit {
   maxHp: number;
   /** False while an invader is hidden from the ship (shown as a blip). */
   seen: boolean;
+  overwatch: boolean;
+  kills: number;
 }
 
 export type Fx =
@@ -29,13 +31,12 @@ export type Fx =
 
 export interface Playback {
   units: DisplayUnit[];
-  fx: Fx[];
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function toDisplay(u: Unit, seen = true): DisplayUnit {
-  return { id: u.id, side: u.side, type: u.type, name: u.name, pos: { ...u.pos }, hp: u.hp, maxHp: u.maxHp, seen };
+  return { id: u.id, side: u.side, type: u.type, name: u.name, pos: { ...u.pos }, hp: u.hp, maxHp: u.maxHp, seen, overwatch: u.overwatch, kills: u.kills };
 }
 
 let logId = 1;
@@ -54,6 +55,7 @@ export function useGame(seed: number) {
   const [state, setState] = useState<GameState>(() => newGame(seed));
   const [log, setLog] = useState<LogEntry[]>(() => logFrom(wakeUpEvents(state), state));
   const [playback, setPlayback] = useState<Playback | null>(null);
+  const [fx, setFx] = useState<Fx[]>([]);
   const busy = useRef(false);
   const fast = useRef(false);
 
@@ -66,22 +68,70 @@ export function useGame(seed: number) {
       // Lookup state for names: units that died this command are only in `prev`.
       const names: GameState = { ...next, units: [...next.units, ...prev.units.filter((u) => !next.units.some((n) => n.id === u.id))] };
       const model = new Map<number, DisplayUnit>(prev.units.map((u) => [u.id, toDisplay(u)]));
-      let fx: Fx[] = [];
-      const render = () => setPlayback({ units: [...model.values()].map((u) => ({ ...u, pos: { ...u.pos } })), fx: [...fx] });
+      const render = () => setPlayback({ units: [...model.values()].map((u) => ({ ...u, pos: { ...u.pos } })) });
+      // Effects outlive the playback (a damage number can still be floating after the turn ends).
       const addFx = (f: Fx, ttl: number) => {
-        fx = [...fx, f];
-        render();
-        setTimeout(() => {
-          fx = fx.filter((x) => x.id !== f.id);
-          render();
-        }, ttl);
+        setFx((list) => [...list, f]);
+        setTimeout(() => setFx((list) => list.filter((x) => x.id !== f.id)), ttl);
       };
       const wait = (ms: number) => sleep(fast.current ? ms / 4 : ms);
 
       render();
+      let lastShot: { hit: boolean } | null = null;
       for (const e of events) {
         pushLog(logFrom([e], names));
         switch (e.type) {
+          case 'shot': {
+            const shooter = model.get(e.shooterId);
+            if (shooter) shooter.overwatch = false;
+            addFx({ id: fxId++, kind: 'shot', from: e.from, to: e.to, hit: e.info.hit, side: shooter?.side ?? 'invader' }, 450);
+            lastShot = { hit: e.info.hit };
+            await wait(180);
+            break;
+          }
+          case 'damaged': {
+            const u = model.get(e.unitId);
+            if (!u) break;
+            u.hp = e.hp;
+            const graze = lastShot !== null && !lastShot.hit;
+            addFx({ id: fxId++, kind: 'float', at: u.pos, text: graze ? `-${e.amount} graze` : `-${e.amount}`, tone: graze ? 'graze' : 'hit' }, 900);
+            lastShot = null;
+            await wait(220);
+            break;
+          }
+          case 'healed': {
+            const u = model.get(e.unitId);
+            if (!u) break;
+            u.hp = Math.min(u.maxHp, u.hp + e.amount);
+            addFx({ id: fxId++, kind: 'float', at: u.pos, text: `+${e.amount}`, tone: 'heal' }, 900);
+            break;
+          }
+          case 'killed':
+          case 'disabled': {
+            const u = model.get(e.unitId);
+            if (u) {
+              addFx({ id: fxId++, kind: 'float', at: u.pos, text: e.type === 'disabled' ? 'DISABLED' : 'DESTROYED', tone: 'info' }, 900);
+              model.delete(e.unitId);
+              render();
+              await wait(200);
+            }
+            if (e.type === 'killed' && e.byId !== null) {
+              const killer = model.get(e.byId);
+              if (killer && u && killer.side !== u.side) killer.kills++;
+            }
+            break;
+          }
+          case 'unitSpawned':
+            model.set(e.unit.id, toDisplay(e.unit, e.seen));
+            render();
+            await wait(120);
+            break;
+          case 'overwatchSet': {
+            const u = model.get(e.unitId);
+            if (u) u.overwatch = true;
+            render();
+            break;
+          }
           case 'unitMoved': {
             const u = model.get(e.unitId);
             if (!u) break;
@@ -101,7 +151,6 @@ export function useGame(seed: number) {
             break;
         }
       }
-      void addFx;
       setState(next);
       setPlayback(null);
     },
@@ -137,5 +186,5 @@ export function useGame(seed: number) {
     [],
   );
 
-  return { state, log, playback, busy: playback !== null, dispatch, restart, fast, nextFxId: () => fxId++ };
+  return { state, log, playback, fx, busy: playback !== null, dispatch, restart, fast };
 }

@@ -16,6 +16,7 @@ interface Props {
   units: DisplayUnit[];
   fx: Fx[];
   selectedId: number | null;
+  targetId: number | null;
   highlights: TileHighlight[];
   path: Vec[] | null;
   pathLabel: string | null;
@@ -117,7 +118,7 @@ function Systems({ state }: { state: GameState }) {
   );
 }
 
-function UnitShape({ u, selected }: { u: DisplayUnit; selected: boolean }) {
+function UnitShape({ u, selected, targeted }: { u: DisplayUnit; selected: boolean; targeted: boolean }) {
   const cx = u.pos.x * TILE + TILE / 2;
   const cy = u.pos.y * TILE + TILE / 2;
   const color = u.side === 'drone' ? C.drone : C.invader;
@@ -158,8 +159,20 @@ function UnitShape({ u, selected }: { u: DisplayUnit; selected: boolean }) {
   return (
     <g transform={`translate(${cx},${cy})`} style={{ transition: 'transform 60ms linear' }}>
       {selected && <circle r={13} fill="none" stroke="#e8fbff" strokeWidth={1.5} strokeDasharray="4 3" />}
+      {targeted && (
+        <g stroke="#ff5d5d" strokeWidth={1.8}>
+          <circle r={13} fill="none" />
+          <path d="M0,-17 L0,-11 M0,11 L0,17 M-17,0 L-11,0 M11,0 L17,0" />
+        </g>
+      )}
+      {u.overwatch && <path d="M-11,9 Q0,15 11,9" fill="none" stroke="#e8fbff" strokeWidth={1.6} />}
       {shape}
       <g>{pips}</g>
+      {u.side === 'drone' && u.kills > 0 && (
+        <text x={10} y={13} fontSize={8} fontWeight={700} fill="#e8fbff">
+          {u.kills}
+        </text>
+      )}
     </g>
   );
 }
@@ -238,7 +251,7 @@ export function MapView(p: Props) {
       {p.hover && <rect x={p.hover.x * TILE} y={p.hover.y * TILE} width={TILE} height={TILE} fill="none" stroke="#ffffff55" strokeWidth={1} pointerEvents="none" />}
       <g>
         {p.units.map((u) => (
-          <UnitShape key={u.id} u={u} selected={u.id === p.selectedId} />
+          <UnitShape key={u.id} u={u} selected={u.id === p.selectedId} targeted={u.id === p.targetId} />
         ))}
       </g>
       <g pointerEvents="none">

@@ -1,7 +1,7 @@
 // The single entry point to the rules: validate a command, apply it to a copy
 // of the state, and return the new state plus the events that happened.
 
-import { doMove } from './actions';
+import { doMove, doOverwatch, doShoot } from './actions';
 import { endTurn } from './turn';
 import { clone } from './util';
 import { validateCommand } from './validate';
@@ -16,6 +16,12 @@ export function applyCommand(state: GameState, cmd: Command): CommandResult {
   switch (cmd.type) {
     case 'move':
       doMove(s, cmd, emit);
+      break;
+    case 'shoot':
+      doShoot(s, cmd, emit);
+      break;
+    case 'overwatch':
+      doOverwatch(s, cmd, emit);
       break;
     case 'endTurn':
       endTurn(s, emit);

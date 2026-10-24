@@ -5,9 +5,17 @@ import { runEnemyPhase } from './ai';
 import type { Emit } from './actions';
 import { brownoutDrones, drawUpTo, refillPower } from './economy';
 import { drones } from './units';
+import { droneCan } from './validate';
 import type { GameState } from './types';
 
 export function endTurn(s: GameState, emit: Emit): void {
+  // Drones you didn't activate go on overwatch automatically.
+  for (const d of drones(s)) {
+    if (!d.acted && !d.overwatch && droneCan(d, 'overwatch')) {
+      d.overwatch = true;
+      emit({ type: 'overwatchSet', unitId: d.id });
+    }
+  }
   emit({ type: 'enemyPhase' });
   runEnemyPhase(s, emit);
   startRound(s, emit);

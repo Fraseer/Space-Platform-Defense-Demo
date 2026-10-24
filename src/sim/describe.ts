@@ -20,6 +20,24 @@ export function describeEvent(e: GameEvent, s: GameState): LogLine | null {
       return { text: `— Round ${e.round} —`, tone: 'info' };
     case 'enemyPhase':
       return { text: 'Enemy turn.', tone: 'warn' };
+    case 'shot': {
+      const who = e.shooterSeen ? nameOf(s, e.shooterId) : 'Unseen contact';
+      const prefix = e.info.overwatch ? '[Overwatch] ' : '';
+      const outcome = e.info.hit ? `hit for ${e.info.damage}` : `grazed for ${e.info.damage}`;
+      const flank = e.info.flanked ? ', flanked' : '';
+      const tone = s.units.find((u) => u.id === e.shooterId)?.side === 'invader' ? 'bad' : 'info';
+      return { text: `${prefix}${who} → ${nameOf(s, e.targetId)}: ${outcome} (${e.info.chance}%${flank}).`, tone };
+    }
+    case 'killed': {
+      const victim = s.units.find((u) => u.id === e.unitId);
+      const verb = e.cause === 'vent' ? 'vented into space' : e.cause === 'drill' ? 'crushed by the drill' : e.cause === 'recycle' ? 'recycled' : 'destroyed';
+      const by = e.cause === 'shot' && e.byId !== null ? ` by ${nameOf(s, e.byId)}` : '';
+      return { text: `${victim?.name ?? 'Unit'} ${verb}${by}.`, tone: victim?.side === 'drone' ? 'bad' : 'good' };
+    }
+    case 'overwatchSet':
+      return { text: `${nameOf(s, e.unitId)} on overwatch.`, tone: 'info' };
+    case 'matterChanged':
+      return e.delta === 0 ? null : { text: `${e.delta > 0 ? '+' : ''}${e.delta} matter (${e.reason}).`, tone: e.delta > 0 ? 'good' : 'info' };
     case 'brownout':
       return { text: `Brownout: upkeep exceeds income. ${e.unitIds.map((id) => nameOf(s, id)).join(', ')} start with reduced AP.`, tone: 'bad' };
     default:

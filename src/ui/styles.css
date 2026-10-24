@@ -86,3 +86,28 @@ button.on { border-color: var(--drone); color: var(--drone); }
 .fx-info { fill: #e6f3ff; }
 @keyframes fade { from { opacity: 1; } to { opacity: 0; } }
 @keyframes rise { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-14px); } }
+
+.tag { font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 6px; vertical-align: middle; font-weight: 700; }
+.tag.ow { background: #1c3a44; color: #bff6ff; }
+.tag.flank { background: #4a2a12; color: var(--invader); }
+.unit-name.invader { color: var(--invader); }
+.unit-modules { color: #c3a5ff; margin-top: 2px; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.small { font-size: 11px; margin-top: 4px; }
+
+.shot-head { font-weight: 700; }
+.shot-chance { font-size: 30px; font-weight: 800; color: #ffe066; margin: 2px 0; }
+.breakdown { width: 100%; border-collapse: collapse; font-size: 12px; }
+.breakdown td { padding: 1px 0; }
+.breakdown td:last-child { text-align: right; }
+.breakdown .pos { color: var(--good); }
+.breakdown .neg { color: var(--bad); }
+.shot-dmg { margin-top: 6px; color: var(--text); }
+.fire { margin-top: 8px; border-color: var(--bad); color: #ffb0b0; font-weight: 700; }
+
+.roster { display: flex; flex-direction: column; gap: 2px; }
+.roster-row { display: grid; grid-template-columns: 1.4fr 1fr 0.6fr 0.5fr 0.4fr; gap: 6px; padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+.roster-row:hover { background: #17202a; }
+.roster-row.sel { background: #13303a; }
+.r-name { color: var(--drone); font-weight: 700; }
+.r-ow { color: #bff6ff; }
