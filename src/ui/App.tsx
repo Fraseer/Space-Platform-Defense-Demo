@@ -12,6 +12,8 @@ import {
   planIntents,
   planMove,
   scoreTilesFor,
+  seenInvaderIds,
+  sightMap,
   stats,
   powerIncome,
   previewShot,
@@ -139,19 +141,26 @@ export function App() {
   const shotTarget = pinnedTarget && targets.includes(pinnedTarget) ? pinnedTarget : hoverUnit && targets.includes(hoverUnit) ? hoverUnit : undefined;
   const shotPreview = drone && shotTarget ? previewShot(state, drone, shotTarget) : null;
 
-  const units = game.playback ? game.playback.units : state.units.map((u) => toDisplay(u));
+  const sight = useMemo(() => sightMap(state), [state]);
+  const seenIds = useMemo(() => seenInvaderIds(state), [state]);
+  const isSeen = (u: Unit) => u.side === 'drone' || debug || seenIds.has(u.id);
+  const units = game.playback ? game.playback.units : state.units.map((u) => toDisplay(u, u.side === 'drone' || seenIds.has(u.id)));
 
-  // Tactical overlay: enemy intent, weapon ranges. Debug: AI tile scores.
-  const intents = useMemo(() => (tactical && !game.busy && state.status === 'playing' ? planIntents(state) : undefined), [state, tactical, game.busy]);
+  // Tactical overlay: enemy intent (only for invaders the ship can see), weapon ranges. Debug: AI tile scores.
+  const intents = useMemo(
+    () => (tactical && !game.busy && state.status === 'playing' ? planIntents(state).filter((i) => debug || seenIds.has(i.unitId)) : undefined),
+    [state, tactical, game.busy, debug, seenIds],
+  );
   const rings: { center: Vec; radius: number; kind: 'optimal' | 'max' | 'sensor' | 'overwatch' }[] = [];
   if (drone && !game.busy) {
     rings.push({ center: drone.pos, radius: stats(drone).optimalRange, kind: 'optimal' });
     rings.push({ center: drone.pos, radius: stats(drone).maxRange, kind: 'max' });
+    rings.push({ center: drone.pos, radius: stats(drone).sensor, kind: 'sensor' });
   }
   if (tactical && !game.busy)
     for (const d of state.units)
       if (d.side === 'drone' && d.overwatch && d.id !== drone?.id) rings.push({ center: d.pos, radius: stats(d).maxRange, kind: 'overwatch' });
-  const scoreSubject = pinnedTarget?.side === 'invader' ? pinnedTarget : hoverUnit?.side === 'invader' ? hoverUnit : undefined;
+  const scoreSubject = debug ? (pinnedTarget?.side === 'invader' ? pinnedTarget : hoverUnit?.side === 'invader' ? hoverUnit : undefined) : undefined;
   const scores = useMemo(() => (debug && scoreSubject && !game.busy ? scoreTilesFor(state, scoreSubject.id) : undefined), [debug, scoreSubject, state, game.busy]);
 
   const fire = (target: Unit) => {
@@ -319,7 +328,7 @@ export function App() {
           <button className={tactical ? 'on' : ''} onClick={() => setTactical((v) => !v)} title="Enemy intent and weapon ranges">
             Tactical (T)
           </button>
-          <button className={debug ? 'on' : ''} onClick={() => setDebug((v) => !v)} title="AI tile scores for the invader under the mouse">
+          <button className={debug ? 'on' : ''} onClick={() => setDebug((v) => !v)} title="Reveal every invader; show AI tile scores for the invader under the mouse">
             Debug (D)
           </button>
         </div>
@@ -351,6 +360,8 @@ export function App() {
             intents={intents}
             rings={rings}
             scores={scores}
+            sight={sight}
+            reveal={debug}
           />
           {card && (
             <div className="card-mode">
@@ -379,7 +390,11 @@ export function App() {
             inspect && (
               <section className="panel">
                 <h3>Contact</h3>
-                <InvaderInfo unit={inspect} />
+                {isSeen(inspect) ? (
+                  <InvaderInfo unit={inspect} />
+                ) : (
+                  <div className="muted">Unknown contact on the motion tracker. Light the area, get a drone's sensors on it, or Scan.</div>
+                )}
               </section>
             )
           )}

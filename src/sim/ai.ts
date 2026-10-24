@@ -49,7 +49,7 @@ function goalFor(s: GameState, u: Unit): Goal {
   const bridge: Goal = { kind: 'bridge', tiles: s.bridgeTiles, systems: [] };
   const goal = INVADERS[u.type as InvaderType].goal;
   if (goal === 'hunt') {
-    const seen = drones(s).filter((d) => invaderCanSee(s, u.pos, d.pos));
+    const seen = knownDrones(s, u);
     if (seen.length > 0) return { kind: 'hunt', tiles: seen.map((d) => idx(s, d.pos)), systems: [] };
   }
   if (goal === 'sabotage') {
@@ -72,8 +72,24 @@ function weightsFor(u: Unit) {
   return CONFIG.ai.weights[u.type] ?? CONFIG.ai.weights.brute;
 }
 
+/**
+ * Drones this invader knows about: the ones it can see from where it starts
+ * its turn. In the dark that is only a few tiles, so invaders blunder about.
+ */
+function knownDrones(s: GameState, u: Unit): Unit[] {
+  return drones(s).filter((d) => invaderCanSee(s, u.pos, d.pos));
+}
+
 /** Score one candidate tile. `apAfter` is the AP the invader would have left there. */
-function scoreTile(s: GameState, u: Unit, pos: Vec, apAfter: number, goal: Goal, field: number[]): { score: number; parts: Record<string, number>; action: IntentAction | null } {
+function scoreTile(
+  s: GameState,
+  u: Unit,
+  pos: Vec,
+  apAfter: number,
+  goal: Goal,
+  field: number[],
+  known: Unit[],
+): { score: number; parts: Record<string, number>; action: IntentAction | null } {
   const w = weightsFor(u);
   const st = stats(u);
   const parts: Record<string, number> = {};
@@ -86,7 +102,7 @@ function scoreTile(s: GameState, u: Unit, pos: Vec, apAfter: number, goal: Goal,
   let threats = 0;
   let minCover = 2;
   let exposure = 0;
-  for (const d of drones(s)) {
+  for (const d of known) {
     if (distance(d.pos, pos) > stats(d).maxRange || !hasLineOfSight(s, d.pos, pos)) continue;
     threats++;
     const c = coverAgainst(s, pos, d.pos);
@@ -105,7 +121,7 @@ function scoreTile(s: GameState, u: Unit, pos: Vec, apAfter: number, goal: Goal,
     } else {
       let best = 0;
       let flanked = false;
-      for (const d of drones(s)) {
+      for (const d of known) {
         if (!canTarget(s, u, d, pos)) continue;
         const p = previewShot(s, u, d, { from: pos });
         const hit = p.chance / 100;
@@ -144,9 +160,10 @@ function candidates(s: GameState, u: Unit): { pos: Vec; path: Vec[]; ap: number 
 export function decide(s: GameState, u: Unit): Decision {
   const goal = goalFor(s, u);
   const field = goalField(s, goal.tiles);
+  const known = knownDrones(s, u);
   let best: Decision | null = null;
   for (const c of candidates(s, u)) {
-    const { score, action } = scoreTile(s, u, c.pos, u.ap - c.ap, goal, field);
+    const { score, action } = scoreTile(s, u, c.pos, u.ap - c.ap, goal, field, known);
     if (!best || score > best.score + 1e-9 || (Math.abs(score - best.score) <= 1e-9 && c.ap < best.ap)) {
       best = { path: c.path, ap: c.ap, action, score };
     }
@@ -163,8 +180,9 @@ export function scoreTilesFor(s: GameState, unitId: number): TileScore[] {
   me.ap = CONFIG.turn.apPerTurn;
   const goal = goalFor(sim, me);
   const field = goalField(sim, goal.tiles);
+  const known = knownDrones(sim, me);
   return candidates(sim, me).map((c) => {
-    const r = scoreTile(sim, me, c.pos, me.ap - c.ap, goal, field);
+    const r = scoreTile(sim, me, c.pos, me.ap - c.ap, goal, field, known);
     return { pos: c.pos, score: r.score, parts: r.parts };
   });
 }

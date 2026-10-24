@@ -24,6 +24,9 @@ interface Props {
   onTileClick: (p: Vec) => void;
   onTileHover: (p: Vec | null) => void;
   onTileContext?: (p: Vec) => void;
+  sight: (0 | 1 | 2)[];
+  /** Debug: draw blips as the units they are. */
+  reveal: boolean;
   intents?: Intent[];
   rings?: { center: Vec; radius: number; kind: 'optimal' | 'max' | 'sensor' | 'overwatch' }[];
   scores?: TileScore[];
@@ -64,7 +67,10 @@ function IntentLayer({ state, intents }: { state: GameState; intents: Intent[] }
 
 const C = {
   floor: '#11161c',
-  floorBridge: '#16222b',
+  floorLit: '#1b242e',
+  floorBridge: '#1c2b36',
+  floorSensed: '#0e171c',
+  floorDark: '#07090c',
   wall: '#36404c',
   wallEdge: '#36404c',
   door: '#4b5866',
@@ -75,7 +81,7 @@ const C = {
   salvage: '#c8b26a',
 };
 
-const StaticTiles = memo(function StaticTiles({ state }: { state: GameState }) {
+const StaticTiles = memo(function StaticTiles({ state, sight }: { state: GameState; sight: (0 | 1 | 2)[] }) {
   const out: React.ReactNode[] = [];
   for (let y = 0; y < state.height; y++) {
     for (let x = 0; x < state.width; x++) {
@@ -88,9 +94,12 @@ const StaticTiles = memo(function StaticTiles({ state }: { state: GameState }) {
         out.push(<rect key={i} x={px} y={py} width={TILE} height={TILE} fill={C.wall} stroke={C.wallEdge} strokeWidth={0.5} />);
         continue;
       }
-      out.push(<rect key={i} x={px} y={py} width={TILE} height={TILE} fill={zone?.kind === 'bridge' ? C.floorBridge : C.floor} stroke="#0c1015" strokeWidth={0.5} />);
-      if (t === 'half') out.push(<rect key={`c${i}`} x={px + 5} y={py + 9} width={TILE - 10} height={TILE - 18} rx={2} fill={C.half} />);
-      if (t === 'full') out.push(<rect key={`c${i}`} x={px + 4} y={py + 4} width={TILE - 8} height={TILE - 8} rx={2} fill={C.full} />);
+      const v = sight[i];
+      const floor = v === 2 ? (zone?.kind === 'bridge' ? C.floorBridge : C.floorLit) : v === 1 ? C.floorSensed : C.floorDark;
+      out.push(<rect key={i} x={px} y={py} width={TILE} height={TILE} fill={floor} stroke={v === 0 ? '#0b0e12' : '#0c1015'} strokeWidth={0.5} />);
+      const dim = v === 0 ? 0.45 : 1;
+      if (t === 'half') out.push(<rect key={`c${i}`} x={px + 5} y={py + 9} width={TILE - 10} height={TILE - 18} rx={2} fill={C.half} opacity={dim} />);
+      if (t === 'full') out.push(<rect key={`c${i}`} x={px + 4} y={py + 4} width={TILE - 8} height={TILE - 8} rx={2} fill={C.full} opacity={dim} />);
     }
   }
   return <g>{out}</g>;
@@ -154,7 +163,19 @@ function Systems({ state }: { state: GameState }) {
   );
 }
 
-function UnitShape({ u, selected, targeted }: { u: DisplayUnit; selected: boolean; targeted: boolean }) {
+function Blip({ u }: { u: DisplayUnit }) {
+  const cx = u.pos.x * TILE + TILE / 2;
+  const cy = u.pos.y * TILE + TILE / 2;
+  return (
+    <g transform={`translate(${cx},${cy})`} style={{ transition: 'transform 60ms linear' }}>
+      <circle r={9} className="blip-pulse" />
+      <circle r={3} fill="#ff8a2a" />
+    </g>
+  );
+}
+
+function UnitShape({ u, selected, targeted, reveal }: { u: DisplayUnit; selected: boolean; targeted: boolean; reveal: boolean }) {
+  if (!u.seen && !reveal) return <Blip u={u} />;
   const cx = u.pos.x * TILE + TILE / 2;
   const cy = u.pos.y * TILE + TILE / 2;
   const color = u.side === 'drone' ? C.drone : C.invader;
@@ -195,6 +216,7 @@ function UnitShape({ u, selected, targeted }: { u: DisplayUnit; selected: boolea
   return (
     <g transform={`translate(${cx},${cy})`} style={{ transition: 'transform 60ms linear' }}>
       {selected && <circle r={13} fill="none" stroke="#e8fbff" strokeWidth={1.5} strokeDasharray="4 3" />}
+      {!u.seen && <circle r={14} fill="none" stroke="#ff8a2a" strokeWidth={0.8} strokeDasharray="1 2" />}
       {targeted && (
         <g stroke="#ff5d5d" strokeWidth={1.8}>
           <circle r={13} fill="none" />
@@ -246,7 +268,7 @@ export function MapView(p: Props) {
       onMouseLeave={() => p.onTileHover(null)}
     >
       <rect width={w} height={h} fill="#07090c" />
-      <StaticTiles state={state} />
+      <StaticTiles state={state} sight={p.sight} />
       <Doors state={state} />
       <Systems state={state} />
       <g>
@@ -314,7 +336,7 @@ export function MapView(p: Props) {
       )}
       <g>
         {p.units.map((u) => (
-          <UnitShape key={u.id} u={u} selected={u.id === p.selectedId} targeted={u.id === p.targetId} />
+          <UnitShape key={u.id} u={u} selected={u.id === p.selectedId} targeted={u.id === p.targetId} reveal={p.reveal} />
         ))}
       </g>
       <g pointerEvents="none">

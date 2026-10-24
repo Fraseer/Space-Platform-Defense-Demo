@@ -20,3 +20,4 @@ export { cardError, fabricatorSpawnTile, zoneTiles } from './effects';
 export { repairCost, withinReach } from './actions';
 export { planIntents, scoreTilesFor, type Intent, type TileScore } from './ai';
 export { airlockName } from './director';
+export { isLit, litMap, sightMap, seenInvaderIds, shipCanSee } from './vision';

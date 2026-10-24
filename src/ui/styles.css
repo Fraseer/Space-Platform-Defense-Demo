@@ -170,3 +170,6 @@ button.on { border-color: var(--drone); color: var(--drone); }
 .go-box.lost h2 { color: var(--bad); }
 .go-stats { width: 100%; margin: 10px 0; }
 .go-stats td:last-child { text-align: right; font-weight: 700; }
+
+.blip-pulse { fill: rgba(255, 138, 42, 0.12); stroke: #ff8a2a; stroke-width: 1.2; animation: blip 1.6s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+@keyframes blip { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.35); opacity: 0.15; } }

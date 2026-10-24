@@ -2,7 +2,7 @@
 // resulting events back as animation. The UI never changes game state itself.
 
 import { useCallback, useRef, useState } from 'react';
-import { applyCommand, describeEvent, newGame, wakeUpEvents, type Command, type GameEvent, type GameState, type Unit, type Vec } from '../sim';
+import { applyCommand, describeEvent, newGame, seenInvaderIds, wakeUpEvents, type Command, type GameEvent, type GameState, type Unit, type Vec } from '../sim';
 
 export interface LogEntry {
   id: number;
@@ -67,7 +67,8 @@ export function useGame(seed: number) {
     async (prev: GameState, next: GameState, events: GameEvent[]) => {
       // Lookup state for names: units that died this command are only in `prev`.
       const names: GameState = { ...next, units: [...next.units, ...prev.units.filter((u) => !next.units.some((n) => n.id === u.id))] };
-      const model = new Map<number, DisplayUnit>(prev.units.map((u) => [u.id, toDisplay(u)]));
+      const seen = seenInvaderIds(prev);
+      const model = new Map<number, DisplayUnit>(prev.units.map((u) => [u.id, toDisplay(u, u.side === 'drone' || seen.has(u.id))]));
       const render = () => setPlayback({ units: [...model.values()].map((u) => ({ ...u, pos: { ...u.pos } })) });
       // Effects outlive the playback (a damage number can still be floating after the turn ends).
       const addFx = (f: Fx, ttl: number) => {
