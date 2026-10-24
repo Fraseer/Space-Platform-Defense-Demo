@@ -42,6 +42,8 @@ button.on { border-color: var(--drone); color: var(--drone); }
 }
 .bottombar { border-top: 1px solid var(--panel-edge); border-bottom: none; align-items: flex-end; padding: 8px 12px; }
 .title { font-weight: 700; letter-spacing: 0.08em; color: #e6f3ff; }
+.topbar { gap: 14px; }
+.topbar > *, .topbar button { white-space: nowrap; }
 .res { font-size: 16px; font-weight: 700; }
 .res .sub { font-size: 11px; font-weight: 400; color: var(--muted); }
 .res.power { color: #ffe066; }
@@ -183,3 +185,15 @@ button.on { border-color: var(--drone); color: var(--drone); }
 .go-box.choice h2 { color: #c3a5ff; }
 .choices { display: flex; gap: 10px; margin-top: 10px; }
 .choices .card { height: 140px; }
+
+.panel-head { display: flex; justify-content: space-between; align-items: center; }
+.panel-head .close { padding: 0 6px; line-height: 1.2; font-size: 13px; }
+.key-tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+.key-tabs button { padding: 2px 8px; font-size: 11px; }
+.key-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; }
+.key-item { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: help; min-width: 0; }
+.key-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.key-swatch { flex: 0 0 auto; background: var(--bg); border-radius: 3px; }
+
+/* Range rings are faint on the map by design; draw them bolder in the key so they read. */
+.key-swatch .ring { stroke-width: 1.8; }

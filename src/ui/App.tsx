@@ -30,6 +30,7 @@ import {
   type Vec,
 } from '../sim';
 import { Hand } from './Hand';
+import { MapKey } from './MapKey';
 import { MapView, type TileHighlight } from './MapView';
 import { BossPanel, BreachPanel, BridgeBar, DronePanel, GameOver, InvaderInfo, LogList, ModuleChoice, Roster, ShotPanel, type DroneAction } from './panels';
 import { toDisplay, useGame } from './useGame';
@@ -50,6 +51,25 @@ function writeSeed(seed: number) {
 }
 
 const at = (u: { pos: Vec }, p: Vec) => u.pos.x === p.x && u.pos.y === p.y;
+
+const KEY_STORAGE = 'spd.showKey';
+
+/** The map key starts open on a first visit, then remembers the player's choice. */
+function readShowKey(): boolean {
+  try {
+    return localStorage.getItem(KEY_STORAGE) !== 'closed';
+  } catch {
+    return true;
+  }
+}
+
+function writeShowKey(open: boolean) {
+  try {
+    localStorage.setItem(KEY_STORAGE, open ? 'open' : 'closed');
+  } catch {
+    // not persisted, fine
+  }
+}
 
 /** Turns a clicked tile into the target a card needs, if it can be one. */
 function targetFromTile(s: GameState, kind: string, p: Vec): CardTarget | null {
@@ -83,6 +103,12 @@ export function App() {
   const [hover, setHover] = useState<Vec | null>(null);
   const [tactical, setTactical] = useState(true);
   const [debug, setDebug] = useState(false);
+  const [showKey, setShowKey] = useState(readShowKey);
+  const toggleKey = () =>
+    setShowKey((v) => {
+      writeShowKey(!v);
+      return !v;
+    });
 
   const selected = selectedId !== null ? unitById(state, selectedId) : undefined;
   const drone = selected && selected.side === 'drone' ? selected : undefined;
@@ -295,6 +321,7 @@ export function App() {
       if (k === 'e') endTurn();
       else if (k === 't') setTactical((v) => !v);
       else if (k === 'd') setDebug((v) => !v);
+      else if (k === 'k') toggleKey();
       else if (e.key === 'Tab') {
         e.preventDefault();
         cycleDrone();
@@ -335,10 +362,10 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <div className="title">COMMAND DECK · Round {state.round}</div>
-        <div className="res power" title="Power refills each turn to income minus drone upkeep.">
+        <div className="res power" title={`Power refills each turn to income (${powerIncome(state)}) minus drone upkeep (${totalUpkeep(state)}).`}>
           ⚡ {state.power}{' '}
           <span className="sub">
-            power · income {powerIncome(state)} − upkeep {totalUpkeep(state)}
+            power ({powerIncome(state)} − {totalUpkeep(state)} upkeep)
           </span>
         </div>
         <div className="res matter" title="Matter is banked. Salvage and kills add it; fabricating and repairs spend it.">
@@ -347,6 +374,9 @@ export function App() {
         <BridgeBar state={state} />
         <div className="spacer" />
         <div className="toggles">
+          <button className={showKey ? 'on' : ''} onClick={toggleKey} title="What every icon and marker on the map means">
+            Key (K)
+          </button>
           <button className={tactical ? 'on' : ''} onClick={() => setTactical((v) => !v)} title="Enemy intent and weapon ranges">
             Tactical (T)
           </button>
@@ -408,6 +438,17 @@ export function App() {
             <section className="panel">
               <h3>Boss</h3>
               <BossPanel state={state} />
+            </section>
+          )}
+          {showKey && (
+            <section className="panel">
+              <h3 className="panel-head">
+                Key
+                <button className="close" onClick={toggleKey} title="Hide the key (K)">
+                  ×
+                </button>
+              </h3>
+              <MapKey />
             </section>
           )}
           <section className="panel">

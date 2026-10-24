@@ -1,11 +1,37 @@
 // Top-down SVG grid. Placeholder shapes: cyan drones, orange invaders.
+// The drawing pieces live in glyphs.tsx, shared with the map key.
 
 import { memo } from 'react';
 import { INVADERS, repairCost, type GameState, type Intent, type SystemObj, type TileScore, type Vec } from '../sim';
-import { Icon, IconDefs, type IconName } from './icons';
+import {
+  AirlockTile,
+  BlipGlyph,
+  CarryBadge,
+  COLORS,
+  DoorBar,
+  DrillMark,
+  FloorTile,
+  FullCover,
+  HalfCover,
+  HpPips,
+  HuskMark,
+  KillCount,
+  LINE,
+  OverwatchArc,
+  SalvageMark,
+  SelectedRing,
+  SystemTile,
+  TargetReticle,
+  TILE,
+  UnitGlyph,
+  UnseenRing,
+  WallTile,
+  floorFill,
+} from './glyphs';
+import { Icon, IconDefs } from './icons';
 import type { DisplayUnit, Fx } from './useGame';
 
-export const TILE = 28;
+export { TILE };
 
 export interface TileHighlight {
   pos: Vec;
@@ -49,36 +75,18 @@ function IntentLayer({ state, intents }: { state: GameState; intents: Intent[] }
           <g key={it.unitId}>
             {pts.length > 1 && (
               <>
-                <polyline points={pts.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#ff8a2a" strokeWidth={1.6} strokeDasharray="4 3" opacity={0.85} />
-                <circle cx={end.x} cy={end.y} r={4} fill="none" stroke="#ff8a2a" strokeWidth={1.5} />
+                <polyline points={pts.map((p) => `${p.x},${p.y}`).join(' ')} {...LINE.intent} />
+                <circle cx={end.x} cy={end.y} r={4} fill="none" stroke={COLORS.invader} strokeWidth={1.5} />
               </>
             )}
-            {target && (
-              <line x1={end.x} y1={end.y} x2={center(target.pos).x} y2={center(target.pos).y} stroke="#ff5d5d" strokeWidth={1.4} strokeDasharray="2 3" />
-            )}
-            {sys && <Icon name="warning" x={center(sys.pos).x} y={center(sys.pos).y - 16} size={13} color="#ff5d5d" />}
+            {target && <line x1={end.x} y1={end.y} x2={center(target.pos).x} y2={center(target.pos).y} {...LINE.shotIntent} />}
+            {sys && <Icon name="warning" x={center(sys.pos).x} y={center(sys.pos).y - 16} size={13} color={COLORS.danger} />}
           </g>
         );
       })}
     </g>
   );
 }
-
-const C = {
-  floor: '#11161c',
-  floorLit: '#1b242e',
-  floorBridge: '#1c2b36',
-  floorSensed: '#0e171c',
-  floorDark: '#07090c',
-  wall: '#36404c',
-  wallEdge: '#36404c',
-  door: '#4b5866',
-  half: '#3c4652',
-  full: '#56606c',
-  drone: '#3fe0ff',
-  invader: '#ff8a2a',
-  salvage: '#c8b26a',
-};
 
 const StaticTiles = memo(function StaticTiles({ state, sight }: { state: GameState; sight: (0 | 1 | 2)[] }) {
   const out: React.ReactNode[] = [];
@@ -88,18 +96,14 @@ const StaticTiles = memo(function StaticTiles({ state, sight }: { state: GameSta
       const t = state.tiles[i];
       const px = x * TILE;
       const py = y * TILE;
-      const zone = state.zones[state.zoneOf[i]];
       if (t === 'wall') {
-        out.push(<rect key={i} x={px} y={py} width={TILE} height={TILE} fill={C.wall} stroke={C.wallEdge} strokeWidth={0.5} />);
+        out.push(<WallTile key={i} x={px} y={py} />);
         continue;
       }
       const v = sight[i];
-      let floor = v === 2 ? (zone?.kind === 'bridge' ? C.floorBridge : C.floorLit) : v === 1 ? C.floorSensed : C.floorDark;
-      if (zone?.kind === 'tunnel') floor = v === 0 ? '#140d08' : '#2a1b10';
-      out.push(<rect key={i} x={px} y={py} width={TILE} height={TILE} fill={floor} stroke={v === 0 ? '#0b0e12' : '#0c1015'} strokeWidth={0.5} />);
-      const dim = v === 0 ? 0.45 : 1;
-      if (t === 'half') out.push(<rect key={`c${i}`} x={px + 5} y={py + 9} width={TILE - 10} height={TILE - 18} rx={2} fill={C.half} opacity={dim} />);
-      if (t === 'full') out.push(<rect key={`c${i}`} x={px + 4} y={py + 4} width={TILE - 8} height={TILE - 8} rx={2} fill={C.full} opacity={dim} />);
+      out.push(<FloorTile key={i} x={px} y={py} fill={floorFill(v, state.zones[state.zoneOf[i]]?.kind)} unseen={v === 0} />);
+      if (t === 'half') out.push(<HalfCover key={`c${i}`} x={px} y={py} dim={v === 0} />);
+      if (t === 'full') out.push(<FullCover key={`c${i}`} x={px} y={py} dim={v === 0} />);
     }
   }
   return <g>{out}</g>;
@@ -108,20 +112,16 @@ const StaticTiles = memo(function StaticTiles({ state, sight }: { state: GameSta
 function Doors({ state }: { state: GameState }) {
   return (
     <g>
-      {state.doors.map((d) => {
-        const px = d.pos.x * TILE;
-        const py = d.pos.y * TILE;
-        // Doors in a horizontal wall run (walls left and right) are drawn horizontally.
-        const left = state.tiles[d.pos.y * state.width + d.pos.x - 1];
-        const horizontal = left === 'wall';
-        const sealed = d.sealedRounds > 0;
-        const color = sealed ? '#d94a4a' : C.door;
-        return horizontal ? (
-          <rect key={`${d.pos.x},${d.pos.y}`} x={px} y={py + TILE / 2 - 2} width={TILE} height={4} fill={color} opacity={sealed ? 1 : 0.8} />
-        ) : (
-          <rect key={`${d.pos.x},${d.pos.y}`} x={px + TILE / 2 - 2} y={py} width={4} height={TILE} fill={color} opacity={sealed ? 1 : 0.8} />
-        );
-      })}
+      {state.doors.map((d) => (
+        <DoorBar
+          key={`${d.pos.x},${d.pos.y}`}
+          x={d.pos.x * TILE}
+          y={d.pos.y * TILE}
+          // Doors in a horizontal wall run (walls left and right) are drawn horizontally.
+          horizontal={state.tiles[d.pos.y * state.width + d.pos.x - 1] === 'wall'}
+          sealed={d.sealedRounds > 0}
+        />
+      ))}
     </g>
   );
 }
@@ -135,120 +135,51 @@ function systemTitle(s: SystemObj): string {
 function Systems({ state }: { state: GameState }) {
   return (
     <g>
-      {state.systems.map((s) => {
-        const cx = s.pos.x * TILE + TILE / 2;
-        const cy = s.pos.y * TILE + TILE / 2;
-        const color = s.working ? '#7fe7c4' : '#6b6f75';
-        return (
-          <g key={s.id}>
-            <title>{systemTitle(s)}</title>
-            <rect x={cx - TILE / 2 + 2} y={cy - TILE / 2 + 2} width={TILE - 4} height={TILE - 4} rx={4} fill="#1d262f" stroke={color} strokeWidth={1.5} strokeDasharray={s.working ? undefined : '3 2'} />
-            <Icon name={s.kind as IconName} x={cx} y={cy} size={18} color={color} />
-          </g>
-        );
-      })}
+      {state.systems.map((s) => (
+        <g key={s.id}>
+          <title>{systemTitle(s)}</title>
+          <SystemTile x={s.pos.x * TILE} y={s.pos.y * TILE} kind={s.kind} working={s.working} />
+        </g>
+      ))}
       {state.salvage
         .filter((sp) => sp.charges > 0)
         .map((sp) => (
           <g key={sp.id}>
-            <circle cx={sp.pos.x * TILE + TILE / 2} cy={sp.pos.y * TILE + TILE / 2} r={5} fill="none" stroke={C.salvage} strokeWidth={1.5} />
-            <circle cx={sp.pos.x * TILE + TILE / 2} cy={sp.pos.y * TILE + TILE / 2} r={1.8} fill={C.salvage} />
+            <title>{`Salvage: a Worker on or next to it gets matter (${sp.charges} left).`}</title>
+            <SalvageMark x={sp.pos.x * TILE} y={sp.pos.y * TILE} />
           </g>
         ))}
-      {state.airlocks.map((a) => {
-        const px = a.pos.x * TILE;
-        const py = a.pos.y * TILE;
-        return (
-          <g key={a.id}>
-            <title>{a.name}</title>
-            <rect x={px + 1} y={py + 1} width={TILE - 2} height={TILE - 2} fill="#2a1c12" stroke="#a8571c" strokeWidth={1.5} />
-            <Icon name="airlock" x={px + TILE / 2} y={py + TILE / 2} size={20} color="#ff9d4d" />
-            {/* The airlock's letter stays as a small tag: breach warnings name airlocks by it. */}
-            <rect x={px + TILE - 10} y={py + TILE - 10} width={9} height={9} rx={1.5} fill="#2a1c12" stroke="#a8571c" strokeWidth={0.8} />
-            <text x={px + TILE - 5.5} y={py + TILE - 2.8} textAnchor="middle" fontSize={7.5} fontWeight={700} fill="#ffb877">
-              {a.id}
-            </text>
-          </g>
-        );
-      })}
-    </g>
-  );
-}
-
-function Blip({ u }: { u: DisplayUnit }) {
-  const cx = u.pos.x * TILE + TILE / 2;
-  const cy = u.pos.y * TILE + TILE / 2;
-  return (
-    <g transform={`translate(${cx},${cy})`} style={{ transition: 'transform 60ms linear' }}>
-      <circle r={9} className="blip-pulse" />
-      <circle r={3} fill="#ff8a2a" />
+      {state.airlocks.map((a) => (
+        <g key={a.id}>
+          <title>{a.name}</title>
+          <AirlockTile x={a.pos.x * TILE} y={a.pos.y * TILE} letter={a.id} />
+        </g>
+      ))}
     </g>
   );
 }
 
 function UnitShape({ u, selected, targeted, reveal }: { u: DisplayUnit; selected: boolean; targeted: boolean; reveal: boolean }) {
-  if (!u.seen && !reveal) return <Blip u={u} />;
-  const cx = u.pos.x * TILE + TILE / 2;
-  const cy = u.pos.y * TILE + TILE / 2;
-  const color = u.side === 'drone' ? C.drone : C.invader;
-  let shape: React.ReactNode;
-  switch (u.type) {
-    case 'sentry':
-      shape = <polygon points={`0,-10 10,0 0,10 -10,0`} fill={color} />;
-      break;
-    case 'worker':
-      shape = <circle r={8} fill={color} />;
-      break;
-    case 'runner':
-      shape = <polygon points={`0,-9 8,7 -8,7`} fill={color} />;
-      break;
-    case 'brute':
-      shape = <rect x={-10} y={-10} width={20} height={20} rx={2} fill={color} />;
-      break;
-    case 'saboteur':
-      shape = <polygon points={`-5,-9 5,-9 10,0 5,9 -5,9 -10,0`} fill={color} />;
-      break;
-    case 'breacher':
-      shape = <polygon points={`-6,-12 6,-12 12,-6 12,6 6,12 -6,12 -12,6 -12,-6`} fill={color} stroke="#ffd2a6" strokeWidth={1.5} />;
-      break;
-    case 'rig':
-      shape = (
-        <g>
-          <rect x={-11} y={-11} width={22} height={22} fill="none" stroke={color} strokeWidth={3} />
-          <path d="M-8,-8 L8,8 M8,-8 L-8,8" stroke={color} strokeWidth={3} />
-        </g>
-      );
-      break;
+  const transform = `translate(${u.pos.x * TILE + TILE / 2},${u.pos.y * TILE + TILE / 2})`;
+  const style = { transition: 'transform 60ms linear' };
+  if (!u.seen && !reveal) {
+    return (
+      <g transform={transform} style={style}>
+        <BlipGlyph />
+      </g>
+    );
   }
-  const pips = [];
-  const pipW = Math.min(4, 22 / u.maxHp);
-  for (let i = 0; i < u.maxHp; i++) {
-    pips.push(<rect key={i} x={-11 + i * pipW} y={-15} width={Math.max(pipW - 0.6, 0.8)} height={2.5} fill={i < u.hp ? color : '#333a42'} />);
-  }
+  const color = u.side === 'drone' ? COLORS.drone : COLORS.invader;
   return (
-    <g transform={`translate(${cx},${cy})`} style={{ transition: 'transform 60ms linear' }}>
-      {selected && <circle r={13} fill="none" stroke="#e8fbff" strokeWidth={1.5} strokeDasharray="4 3" />}
-      {!u.seen && <circle r={14} fill="none" stroke="#ff8a2a" strokeWidth={0.8} strokeDasharray="1 2" />}
-      {targeted && (
-        <g stroke="#ff5d5d" strokeWidth={1.8}>
-          <circle r={13} fill="none" />
-          <path d="M0,-17 L0,-11 M0,11 L0,17 M-17,0 L-11,0 M11,0 L17,0" />
-        </g>
-      )}
-      {u.overwatch && <path d="M-11,9 Q0,15 11,9" fill="none" stroke="#e8fbff" strokeWidth={1.6} />}
-      {shape}
-      <g>{pips}</g>
-      {u.carrying && (
-        <g>
-          <circle cx={-9} cy={8} r={5.5} fill="#2a1c12" stroke="#ff8a2a" strokeWidth={1} />
-          <Icon name="husk" x={-9} y={8} size={9} color="#ff9d4d" />
-        </g>
-      )}
-      {u.side === 'drone' && u.kills > 0 && (
-        <text x={10} y={13} fontSize={8} fontWeight={700} fill="#e8fbff">
-          {u.kills}
-        </text>
-      )}
+    <g transform={transform} style={style}>
+      {selected && <SelectedRing />}
+      {!u.seen && <UnseenRing />}
+      {targeted && <TargetReticle />}
+      {u.overwatch && <OverwatchArc />}
+      <UnitGlyph type={u.type} color={color} />
+      <HpPips hp={u.hp} maxHp={u.maxHp} color={color} />
+      {u.carrying && <CarryBadge />}
+      {u.side === 'drone' && u.kills > 0 && <KillCount kills={u.kills} />}
     </g>
   );
 }
@@ -286,7 +217,7 @@ export function MapView(p: Props) {
       onMouseLeave={() => p.onTileHover(null)}
     >
       <IconDefs />
-      <rect width={w} height={h} fill="#07090c" />
+      <rect width={w} height={h} fill={COLORS.floorDark} />
       <StaticTiles state={state} sight={p.sight} />
       <Doors state={state} />
       <Systems state={state} />
@@ -304,13 +235,7 @@ export function MapView(p: Props) {
       </g>
       {p.path && p.path.length > 0 && (
         <g>
-          <polyline
-            points={p.path.map((q) => `${q.x * TILE + TILE / 2},${q.y * TILE + TILE / 2}`).join(' ')}
-            fill="none"
-            stroke="#bff6ff"
-            strokeWidth={2}
-            strokeDasharray="5 4"
-          />
+          <polyline points={p.path.map((q) => `${q.x * TILE + TILE / 2},${q.y * TILE + TILE / 2}`).join(' ')} {...LINE.movePath} />
           {p.pathLabel && (
             <text
               x={p.path[p.path.length - 1].x * TILE + TILE / 2}
@@ -318,7 +243,7 @@ export function MapView(p: Props) {
               textAnchor="middle"
               fontSize={11}
               fontWeight={700}
-              fill="#bff6ff"
+              fill={LINE.movePath.stroke}
             >
               {p.pathLabel}
             </text>
@@ -344,7 +269,7 @@ export function MapView(p: Props) {
       {p.tunnel && p.tunnel.length > 0 && (
         <g pointerEvents="none">
           {p.tunnel.map((q, i) => (
-            <rect key={i} x={q.x * TILE + 9} y={q.y * TILE + 9} width={TILE - 18} height={TILE - 18} fill="none" stroke="#ff5d5d" strokeWidth={1.2} opacity={0.8} />
+            <DrillMark key={i} x={q.x * TILE} y={q.y * TILE} />
           ))}
         </g>
       )}
@@ -354,8 +279,7 @@ export function MapView(p: Props) {
           .map((h) => (
             <g key={h.id}>
               <title>{`${INVADERS[h.type].name} husk: a Worker can haul it to the fabricator for captured tech.`}</title>
-              <circle cx={center(h.pos).x} cy={center(h.pos).y} r={10} fill="#2a1c12" stroke="#a8571c" strokeWidth={1} strokeDasharray="3 2" />
-              <Icon name="husk" x={center(h.pos).x} y={center(h.pos).y} size={16} color="#ff9d4d" />
+              <HuskMark x={h.pos.x * TILE} y={h.pos.y * TILE} />
             </g>
           ))}
       </g>
@@ -364,7 +288,7 @@ export function MapView(p: Props) {
           {(() => {
             const best = Math.max(...p.scores.map((s) => s.score));
             return p.scores.map((s, i) => (
-              <text key={i} x={center(s.pos).x} y={center(s.pos).y + 3} textAnchor="middle" fontSize={8} fill={s.score === best ? '#ffe066' : '#ff8a2a'} opacity={s.score === best ? 1 : 0.75}>
+              <text key={i} x={center(s.pos).x} y={center(s.pos).y + 3} textAnchor="middle" fontSize={8} fill={s.score === best ? '#ffe066' : COLORS.invader} opacity={s.score === best ? 1 : 0.75}>
                 {s.score.toFixed(0)}
               </text>
             ));
@@ -385,7 +309,7 @@ export function MapView(p: Props) {
               y1={f.from.y * TILE + TILE / 2}
               x2={f.to.x * TILE + TILE / 2}
               y2={f.to.y * TILE + TILE / 2}
-              stroke={f.side === 'drone' ? C.drone : C.invader}
+              stroke={f.side === 'drone' ? COLORS.drone : COLORS.invader}
               strokeWidth={f.hit ? 2.5 : 1.2}
               strokeDasharray={f.hit ? undefined : '3 3'}
               className="fx-shot"

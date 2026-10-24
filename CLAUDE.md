@@ -71,10 +71,15 @@ src/sim/            pure simulation
   debug.ts          playtest shortcuts (skip to boss)
   content/          map (ASCII), cards, drones/invaders, modules
 src/ui/             React: renders state, plays back events
+  glyphs.tsx        every map drawing piece, shared by MapView and MapKey
+  icons/ icons.tsx  standalone SVG icons (currentColor) and the <symbol> sprite
 tools/              balance bot (`npm run balance`)
 ```
 
 ## Map
+
+When you add something new to the map, draw it in `src/ui/glyphs.tsx` and add
+an entry to the key (`src/ui/MapKey.tsx`).
 
 `src/sim/content/map.ts` holds the command deck as ASCII rows plus zone
 rectangles (rooms/corridors used for lighting) and relay definitions. The map

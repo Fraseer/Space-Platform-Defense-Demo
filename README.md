@@ -49,7 +49,9 @@ permanently.
 
 ## Map icons
 
-Hover any system for its status and repair cost. Icons are standalone SVGs in
+The in-game **Key** (K, or the button in the top bar) explains every shape,
+icon, tile and overlay marker on the map, in three tabs: Units, Map and
+Overlays. Hover an entry, or anything on the map, for details. Icons are standalone SVGs in
 [`src/ui/icons/`](src/ui/icons/), drawn in `currentColor` so the map can tint
 them (green = working, grey dashed = broken).
 
@@ -76,6 +78,7 @@ them (green = working, grey dashed = broken).
 | Right-click card | Scrap it (1 per turn) |
 | Esc / right-click map | Cancel |
 | E | End turn |
+| K | Show/hide the map key |
 | T | Tactical overlay: enemy intent, weapon ranges, drill route |
 | D | Debug: reveal everything, AI tile scores, skip to boss |
 
